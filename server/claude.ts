@@ -15,17 +15,25 @@ import type { OfficeEvent, PlanItem, Quota, Role } from '../shared/protocol.ts';
 
 export interface ClaudeBinary { path: string; version: string }
 
+const WIN = process.platform === 'win32';
+
 function run(file: string, args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
-    execFile(file, args, { timeout: 15000 }, (err, stdout) => (err ? reject(err) : resolve(stdout)));
+    // shell:true sur Windows : npm installe `claude` comme script .cmd, qu'execFile ne peut pas lancer
+    // directement (ce n'est pas un .exe) sans passer par cmd.exe.
+    execFile(file, args, { timeout: 15000, shell: WIN }, (err, stdout) => (err ? reject(err) : resolve(stdout)));
   });
 }
 
 /** Trouve l'exécutable `claude` (sans passer par les alias du terminal). */
 export async function findClaude(): Promise<ClaudeBinary | null> {
   const home = os.homedir();
-  const fromPath = (process.env.PATH ?? '').split(path.delimiter).filter(Boolean).map((d) => path.join(d, 'claude'));
-  const candidates = [process.env.CLAUDE_BIN, ...fromPath, path.join(home, '.local/bin/claude'), path.join(home, '.claude/local/claude'), '/opt/homebrew/bin/claude', '/usr/local/bin/claude'];
+  // Sur Windows, npm écrit claude.cmd/claude.exe (claude sans extension n'est qu'un script Unix, pas exécutable ici).
+  const names = WIN ? ['claude.cmd', 'claude.exe', 'claude'] : ['claude'];
+  const pathDirs = (process.env.PATH ?? '').split(path.delimiter).filter(Boolean);
+  const fromPath = pathDirs.flatMap((d) => names.map((n) => path.join(d, n)));
+  const fromHome = names.flatMap((n) => [path.join(home, '.local/bin', n), path.join(home, '.claude/local', n)]);
+  const candidates = [process.env.CLAUDE_BIN, ...fromPath, ...fromHome, '/opt/homebrew/bin/claude', '/usr/local/bin/claude'];
   for (const c of new Set(candidates.filter((x): x is string => !!x))) {
     if (!existsSync(c)) continue;
     try {
@@ -98,7 +106,7 @@ export class ClaudeProcess {
       CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1',
     };
     if (!o.useApiKey) { delete env.ANTHROPIC_API_KEY; delete env.ANTHROPIC_AUTH_TOKEN; }
-    const p = spawn(o.bin, args, { cwd: o.cwd, env, stdio: ['pipe', 'pipe', 'pipe'] });
+    const p = spawn(o.bin, args, { cwd: o.cwd, env, stdio: ['pipe', 'pipe', 'pipe'], shell: WIN });
     this.proc = p;
     readline.createInterface({ input: p.stdout }).on('line', (line) => {
       if (!line.trim()) return;
