@@ -36,9 +36,9 @@ function ExitFilming() {
   }, []);
   return (
     <div className={`exit-filming ${shown ? 'shown' : ''}`}>
-      <button onClick={() => { useOffice.setState({ cameraAuto: !cameraAuto }); savePref('cameraAuto', !cameraAuto); }}>{cameraAuto ? '🎥 Caméra auto : oui' : '🎥 Caméra auto : non'}</button>
-      <button onClick={() => void startTour()}>🎤 Visite guidée</button>
-      <button className="quit" onClick={() => useOffice.setState({ filming: false })}>✕ Quitter le tournage (F ou Échap)</button>
+      <button onClick={() => { useOffice.setState({ cameraAuto: !cameraAuto }); savePref('cameraAuto', !cameraAuto); }}>{cameraAuto ? '🎥 Auto kamera: da' : '🎥 Auto kamera: ne'}</button>
+      <button onClick={() => void startTour()}>🎤 Obilazak</button>
+      <button className="quit" onClick={() => useOffice.setState({ filming: false })}>✕ Izađi iz snimanja (F ili Esc)</button>
     </div>
   );
 }

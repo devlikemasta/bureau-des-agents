@@ -316,7 +316,7 @@ async function handle(m: ClientMsg, send: (m: ServerMsg) => void) {
 function listen(port: number) {
   server.once('error', (e: NodeJS.ErrnoException) => {
     if (e.code === 'EADDRINUSE') {
-      console.error(`  Le port ${port} est déjà pris : le bureau tourne peut-être déjà (http://localhost:${port}).`);
+      console.error(`  Port ${port} je već zauzet: kancelarija možda već radi (http://localhost:${port}).`);
       process.exit(1);
     }
     throw e;
@@ -325,11 +325,11 @@ function listen(port: number) {
     writeAktivno(process.pid);
     const url = `http://localhost:${port}`;
     console.log('');
-    console.log('  🏢  Le Bureau des agents');
-    console.log(`  ➜  ${DEV ? `Pont prêt (le bureau : http://localhost:${DEV_PORT})` : url}`);
-    console.log(`  📁  Les missions : ${bureau.missionsDir}`);
-    console.log(claude ? `  ✓  Claude Code ${claude.version} (${claude.path})` : '  ✗  Claude Code introuvable : le bureau tournera en démo.');
-    console.log('  ⏹  Pour arrêter : Ctrl + C');
+    console.log('  🏢  Kancelarija agenata');
+    console.log(`  ➜  ${DEV ? `Most je spreman (kancelarija: http://localhost:${DEV_PORT})` : url}`);
+    console.log(`  📁  Zadaci: ${bureau.missionsDir}`);
+    console.log(claude ? `  ✓  Claude Code ${claude.version} (${claude.path})` : '  ✗  Claude Code nije pronađen: kancelarija će raditi u demo režimu.');
+    console.log('  ⏹  Za zaustavljanje: Ctrl + C');
     console.log('');
     if (args.has('--open') && !DEV) {
       const opener = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'explorer' : 'xdg-open';

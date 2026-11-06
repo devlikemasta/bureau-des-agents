@@ -12,20 +12,20 @@ import { dictationHelp, useDictation } from './voice.ts';
 
 export const EXAMPLES: { label: string; prompt: string }[] = [
   {
-    label: '🔎 Analyse mes concurrents',
-    prompt: 'Analyse mes 5 principaux concurrents : pour chacun, son offre, ses prix et ce que ses clients en disent. Lance un chercheur par concurrent, puis rends-moi un tableau comparatif et 3 idées concrètes pour me démarquer.',
+    label: '🔎 Analiziraj konkurenciju',
+    prompt: 'Analiziraj mojih 5 glavnih konkurenata: za svakog ponudu, cene i šta o njemu kažu kupci. Pusti po jednog istraživača na svakog konkurenta, pa mi vrati uporednu tabelu i 3 konkretne ideje kako da se izdvojim.',
   },
   {
-    label: '📰 Ma veille IA',
-    prompt: 'Fais ma veille IA de la semaine : les 5 nouveautés qui comptent pour un entrepreneur (outils, annonces, usages), avec pour chacune une phrase sur ce que ça change pour moi et le lien de la source.',
+    label: '📰 Moj AI pregled',
+    prompt: 'Napravi moj AI pregled nedelje: 5 novosti koje su bitne za preduzetnika (alati, najave, primene), uz svaku jednu rečenicu o tome šta mi to menja i link do izvora.',
   },
   {
-    label: '🌐 Ma page de vente',
-    prompt: 'Crée la page de vente de mon offre : une page web moderne en un seul fichier, avec un titre fort, les bénéfices, une section témoignages à compléter et un bouton d’appel à l’action. Fais-la relire par un rédacteur.',
+    label: '🌐 Moja prodajna stranica',
+    prompt: 'Napravi prodajnu stranicu za moju ponudu: moderna veb stranica u jednom fajlu, sa jakim naslovom, prednostima, odeljkom za utiske kupaca koji ću dopuniti i dugmetom za poziv na akciju. Neka je pregleda neko iz pisanja.',
   },
   {
-    label: '✍️ 3 posts LinkedIn',
-    prompt: 'Écris-moi 3 posts LinkedIn sur mon activité, chacun avec une accroche différente, et prépare un visuel de citation en HTML pour le meilleur des trois.',
+    label: '✍️ 3 LinkedIn objave',
+    prompt: 'Napiši mi 3 LinkedIn objave o mom poslu, svaku sa drugačijim uvodom, i pripremi HTML vizual sa citatom za najbolju od tri.',
   },
 ];
 
@@ -89,13 +89,13 @@ export function Dialog() {
 
   let text: string;
   if (tour) text = tour.text;
-  else if (connection === 'offline') text = 'Je ne suis pas relié à Claude Code. Lance « npm start » dans le dossier du bureau, et on se met au travail.';
-  else if (claude && !claude.found) text = 'Je ne trouve pas Claude Code sur cet ordinateur. Installe-le (claude.com/claude-code), connecte-toi, puis relance le bureau.';
-  else if (!mission) text = 'Salut ! Moi, c’est Max, le chef du bureau. Dis-moi ce dont tu as besoin : je monte l’équipe, et on s’y met sous tes yeux.';
+  else if (connection === 'offline') text = 'Nisam povezan sa Claude Code-om. Pokreni „npm start” u folderu kancelarije i počinjemo sa radom.';
+  else if (claude && !claude.found) text = 'Ne mogu da nađem Claude Code na ovom računaru. Instaliraj ga (claude.com/claude-code), prijavi se, pa ponovo pokreni kancelariju.';
+  else if (!mission) text = 'Ćao! Ja sam Max, šef kancelarije. Reci mi šta ti treba: sklopiću tim i radićemo pred tvojim očima.';
   else if (chef.typing) text = stripMd(chef.typing);
-  else if (final && !busy) text = stripMd(final.text) || (final.ok ? 'C’est prêt !' : 'Mission arrêtée.');
+  else if (final && !busy) text = stripMd(final.text) || (final.ok ? 'Gotovo je!' : 'Zadatak je zaustavljen.');
   else if (chef.say) text = stripMd(chef.say);
-  else text = busy ? 'Je lis ta demande…' : '';
+  else text = busy ? 'Čitam tvoj zahtev…' : '';
 
   const { out } = useTypewriter(text);
   const box = useRef<HTMLDivElement>(null);
@@ -106,7 +106,7 @@ export function Dialog() {
       <div className="dialog-box">
         <div className="dialog-face"><Portrait happy={!!final?.ok && !busy} /></div>
         <div className="dialog-main">
-          <div className="dialog-name">Max <span>chef de projet</span>{replaying && <em className="pill replay">Rediffusion</em>}</div>
+          <div className="dialog-name">Max <span>šef projekta</span>{replaying && <em className="pill replay">Repriza</em>}</div>
           <div className="dialog-text" ref={box}>{out}<span className="caret" /></div>
         </div>
       </div>
@@ -121,17 +121,17 @@ export function AskBar() {
   const send = useOffice((s) => s.send);
   const a = asks[0];
   if (!a) return null;
-  const who = a.who === 'chef' ? 'Max' : agents[a.who]?.name ?? 'Un agent';
+  const who = a.who === 'chef' ? 'Max' : agents[a.who]?.name ?? 'Jedan agent';
   const role = a.who === 'chef' ? 'chef' : agents[a.who]?.role ?? 'renfort';
   const answer = (allow: boolean) => { sfx(allow ? 'yes' : 'no'); send({ t: 'answer', requestId: a.requestId, allow }); };
   return (
     <div className="askbar">
-      <div className="askbar-head">🙋 <b style={{ color: ROLES[role].color }}>{who}</b> te demande la permission{asks.length > 1 ? ` (et ${asks.length - 1} autre${asks.length > 2 ? 's' : ''})` : ''}</div>
+      <div className="askbar-head">🙋 <b style={{ color: ROLES[role].color }}>{who}</b> traži tvoju dozvolu{asks.length > 1 ? ` (i još ${asks.length - 1})` : ''}</div>
       <div className="askbar-label">{a.label}</div>
       {!a.full && a.detail && <pre className="askbar-detail">{a.detail}</pre>}
       <div className="askbar-actions">
-        <button className="btn primary" onClick={() => answer(true)}>Autoriser</button>
-        <button className="btn" onClick={() => answer(false)}>Refuser</button>
+        <button className="btn primary" onClick={() => answer(true)}>Dozvoli</button>
+        <button className="btn" onClick={() => answer(false)}>Odbij</button>
       </div>
     </div>
   );
@@ -162,8 +162,8 @@ function Composer() {
 
   const mode: 'new' | 'steer' | 'retouch' = !mission ? 'new' : busy ? 'steer' : 'retouch';
   const placeholder = mode === 'new'
-    ? 'Dis à Max ce que tu veux… (par exemple : analyse mes 5 concurrents)'
-    : mode === 'steer' ? 'Une précision pour Max ? Il la lira entre deux étapes.' : 'Demande une retouche à Max… ou lance une nouvelle mission.';
+    ? 'Reci Maxu šta hoćeš… (na primer: analiziraj mojih 5 konkurenata)'
+    : mode === 'steer' ? 'Imaš dopunu za Maxa? Pročitaće je između dva koraka.' : 'Traži od Maxa izmenu… ili pokreni novi zadatak.';
 
   const submit = () => {
     const t = text.trim();
@@ -187,7 +187,7 @@ function Composer() {
           ref={area}
           value={text}
           rows={2}
-          placeholder={demo ? 'C’est une démo : la vraie version tourne sur ton ordinateur, avec Claude Code.' : replaying ? 'Rediffusion en cours…' : placeholder}
+          placeholder={demo ? 'Ovo je demo: prava verzija radi na tvom računaru, uz Claude Code.' : replaying ? 'Repriza u toku…' : placeholder}
           disabled={replaying}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
@@ -196,8 +196,8 @@ function Composer() {
         />
         <button
           className={`mic ${dict.listening ? 'on' : ''}`}
-          title={dict.listening ? 'Arrêter la dictée' : 'Dicter (en français)'}
-          aria-label="Dicter"
+          title={dict.listening ? 'Zaustavi diktiranje' : 'Diktiraj'}
+          aria-label="Diktiraj"
           disabled={replaying}
           onClick={() => (dict.listening ? dict.stop() : dict.start())}
         >
@@ -205,16 +205,16 @@ function Composer() {
         </button>
         {busy && !replaying ? (
           <>
-            {text.trim() && <button className="btn primary send" onClick={submit}>Envoyer</button>}
-            <button className="btn stop" onClick={() => { sfx('click'); send({ t: 'stop' }); }}>■ Arrêter</button>
+            {text.trim() && <button className="btn primary send" onClick={submit}>Pošalji</button>}
+            <button className="btn stop" onClick={() => { sfx('click'); send({ t: 'stop' }); }}>■ Zaustavi</button>
           </>
         ) : (
           <button className="btn primary send" disabled={!text.trim() || replaying} onClick={submit}>
-            {mode === 'new' ? 'C’est parti' : 'Envoyer'} <span aria-hidden="true">➜</span>
+            {mode === 'new' ? 'Kreni' : 'Pošalji'} <span aria-hidden="true">➜</span>
           </button>
         )}
         {mode === 'retouch' && !replaying && (
-          <button className="btn ghost" title="Range cette mission et repars de zéro" onClick={() => { sfx('click'); send({ t: 'new' }); }}>＋ Nouvelle mission</button>
+          <button className="btn ghost" title="Odloži ovaj zadatak i kreni ispočetka" onClick={() => { sfx('click'); send({ t: 'new' }); }}>＋ Novi zadatak</button>
         )}
       </div>
       {dict.problem && (

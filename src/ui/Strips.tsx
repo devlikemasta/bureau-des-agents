@@ -25,7 +25,7 @@ export function Strips() {
     <div className="strips">
       {plan.length > 0 && (
         <div className="strip-plan">
-          <b>Le plan <span>{done}/{plan.length}</span></b>
+          <b>Plan <span>{done}/{plan.length}</span></b>
           <ul>{plan.slice(0, 4).map((p, i) => <li key={i} className={p.status}><i />{p.text}</li>)}</ul>
         </div>
       )}

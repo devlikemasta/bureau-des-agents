@@ -23,28 +23,28 @@ export function FinalCard() {
   if (!show || !final || !mission) return null;
   const close = () => useOffice.setState({ showFinal: false });
   return (
-    <div className="final" role="dialog" aria-label="Le rendu de la mission">
-      <button className="close" onClick={close} aria-label="Fermer">×</button>
+    <div className="final" role="dialog" aria-label="Rezultat zadatka">
+      <button className="close" onClick={close} aria-label="Zatvori">×</button>
       <div className="final-head">
         <span className="final-badge"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" /></svg></span>
         <div>
-          <b>Mission accomplie</b>
+          <b>Zadatak je završen</b>
           <span>{mission.title} · {fmtDuration(workMs)}</span>
         </div>
       </div>
       <div className="final-stats">
-        <span>🤖 {plural(stats.agents, 'agent', 'agents')}</span>
-        <span>🔎 {plural(stats.searches, 'recherche', 'recherches')}</span>
-        <span>🌐 {plural(stats.pages, 'page lue', 'pages lues')}</span>
-        <span>📄 {plural(files, 'rendu', 'rendus')}</span>
+        <span>🤖 {plural(stats.agents, 'agent', 'agenata')}</span>
+        <span>🔎 {plural(stats.searches, 'pretraga', 'pretraga')}</span>
+        <span>🌐 {plural(stats.pages, 'pročitana stranica', 'pročitanih stranica')}</span>
+        <span>📄 {plural(files, 'fajl', 'fajlova')}</span>
       </div>
       {html && <div className="md final-text" dangerouslySetInnerHTML={{ __html: html }} />}
       {files > 0 && <FileList />}
       {!replaying && (
         <div className="final-actions">
-          <button className="btn" onClick={() => send({ t: 'open', missionId: mission.id })}>Ouvrir le dossier</button>
-          <button className="btn" onClick={() => { close(); useOffice.setState({ draft: ' ' }); }}>Demander une retouche</button>
-          <button className="btn primary" onClick={() => { sfx('click'); close(); send({ t: 'new' }); }}>Nouvelle mission</button>
+          <button className="btn" onClick={() => send({ t: 'open', missionId: mission.id })}>Otvori folder</button>
+          <button className="btn" onClick={() => { close(); useOffice.setState({ draft: ' ' }); }}>Traži izmenu</button>
+          <button className="btn primary" onClick={() => { sfx('click'); close(); send({ t: 'new' }); }}>Novi zadatak</button>
         </div>
       )}
     </div>
@@ -81,7 +81,7 @@ export function Viewer() {
             {versions && versions.length > 1 && (
               <select
                 className="versions"
-                title="L’historique des versions de ce fichier"
+                title="Istorija verzija ovog fajla"
                 value={viewer.version ?? ''}
                 onChange={(e) => {
                   const v = e.target.value || undefined;
@@ -89,23 +89,23 @@ export function Viewer() {
                   send({ t: 'read', missionId: viewer.missionId, file: viewer.file, version: v });
                 }}
               >
-                <option value="">Version actuelle</option>
+                <option value="">Trenutna verzija</option>
                 {versions.slice(1).map((v, i) => (
                   <option key={v.id} value={v.id}>
-                    v{versions.length - 1 - i} · {new Date(v.at).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' })} · {v.by === 'chef' ? 'Max' : agents[v.by]?.name ?? 'l’équipe'}
+                    v{versions.length - 1 - i} · {new Date(v.at).toLocaleString('sr-RS', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' })} · {v.by === 'chef' ? 'Max' : agents[v.by]?.name ?? 'tim'}
                   </option>
                 ))}
               </select>
             )}
-            <button className="btn small" onClick={() => send({ t: 'open', missionId: viewer.missionId, file: viewer.file })}>Ouvrir avec l’appli</button>
-            <button className="close" onClick={close} aria-label="Fermer">×</button>
+            <button className="btn small" onClick={() => send({ t: 'open', missionId: viewer.missionId, file: viewer.file })}>Otvori u aplikaciji</button>
+            <button className="close" onClick={close} aria-label="Zatvori">×</button>
           </div>
         </div>
         <div className="modal-body">
-          {viewer.text === undefined ? <p className="muted">Ouverture…</p>
+          {viewer.text === undefined ? <p className="muted">Otvaram…</p>
             : html ? <div className="md" dangerouslySetInnerHTML={{ __html: html }} />
               : <pre className="plain">{viewer.text}</pre>}
-          {viewer.truncated && <p className="small muted">(Fichier long : seul le début est affiché.)</p>}
+          {viewer.truncated && <p className="small muted">(Dug fajl: prikazan je samo početak.)</p>}
         </div>
       </div>
     </div>
@@ -123,22 +123,22 @@ export function History() {
   return (
     <div className="modal-back" onClick={close}>
       <div className="modal history" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-head"><b>Missions précédentes</b><button className="close" onClick={close} aria-label="Fermer">×</button></div>
+        <div className="modal-head"><b>Prethodni zadaci</b><button className="close" onClick={close} aria-label="Zatvori">×</button></div>
         <div className="modal-body">
-          {connection !== 'live' && <p className="muted">Relie le bureau à Claude Code (npm start) pour retrouver tes missions.</p>}
-          {connection === 'live' && !missions.length && <p className="muted">Aucune mission pour l’instant. La première t’attend en bas de l’écran.</p>}
+          {connection !== 'live' && <p className="muted">Poveži kancelariju sa Claude Code-om (npm start) da bi video svoje zadatke.</p>}
+          {connection === 'live' && !missions.length && <p className="muted">Još nema zadataka. Prvi te čeka na dnu ekrana.</p>}
           {missions.map((m) => (
             <div key={m.id} className="hist">
               <div className="hist-id">
                 <b>{m.title}</b>
                 <span className="small muted">
-                  {fmtDate(m.createdAt)} · {fmtDuration(m.workMs)} · {plural(m.stats.agents, 'agent', 'agents')} · {plural(m.files.length, 'rendu', 'rendus')}
-                  {m.status === 'working' ? ' · en cours' : m.status === 'done' ? '' : m.status === 'stopped' ? ' · arrêtée' : ' · en erreur'}
+                  {fmtDate(m.createdAt)} · {fmtDuration(m.workMs)} · {plural(m.stats.agents, 'agent', 'agenata')} · {plural(m.files.length, 'fajl', 'fajlova')}
+                  {m.status === 'working' ? ' · u toku' : m.status === 'done' ? '' : m.status === 'stopped' ? ' · zaustavljen' : ' · greška'}
                 </span>
               </div>
               <div className="row">
-                <button className="btn small" title="Rejoue la mission (sans relancer l’équipe) : parfait pour filmer" onClick={() => { sfx('click'); close(); send({ t: 'replay', missionId: m.id }); }}>▶ Rejouer</button>
-                <button className="btn small ghost" onClick={() => send({ t: 'open', missionId: m.id })}>Dossier</button>
+                <button className="btn small" title="Ponovo prikaži zadatak (bez ponovnog pokretanja tima): idealno za snimanje" onClick={() => { sfx('click'); close(); send({ t: 'replay', missionId: m.id }); }}>▶ Ponovi</button>
+                <button className="btn small ghost" onClick={() => send({ t: 'open', missionId: m.id })}>Folder</button>
               </div>
             </div>
           ))}
@@ -148,8 +148,8 @@ export function History() {
   );
 }
 
-const CHEF_MODELS: [string, string][] = [['sonnet', 'Sonnet (rapide, recommandé)'], ['opus', 'Opus (le plus fin)'], ['fable', 'Fable'], ['haiku', 'Haiku (éclair)'], ['', 'Le modèle par défaut de Claude Code']];
-const TEAM_MODELS: [string, string][] = [['sonnet', 'Sonnet (rapide, recommandé)'], ['haiku', 'Haiku (éclair, économe)'], ['opus', 'Opus (le plus fin)'], ['fable', 'Fable'], ['inherit', 'Le même que Max']];
+const CHEF_MODELS: [string, string][] = [['sonnet', 'Sonnet (brz, preporučeno)'], ['opus', 'Opus (najpreciznij)'], ['fable', 'Fable'], ['haiku', 'Haiku (munjevit)'], ['', 'Podrazumevani model Claude Code-a']];
+const TEAM_MODELS: [string, string][] = [['sonnet', 'Sonnet (brz, preporučeno)'], ['haiku', 'Haiku (munjevit, štedljiv)'], ['opus', 'Opus (najpreciznij)'], ['fable', 'Fable'], ['inherit', 'Isti kao Max']];
 
 export function SettingsPanel() {
   const open = useOffice((s) => s.settingsOpen);
@@ -164,44 +164,44 @@ export function SettingsPanel() {
   return (
     <div className="modal-back" onClick={close}>
       <div className="modal settings" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-head"><b>Réglages du bureau</b><button className="close" onClick={close} aria-label="Fermer">×</button></div>
+        <div className="modal-head"><b>Podešavanja kancelarije</b><button className="close" onClick={close} aria-label="Zatvori">×</button></div>
         <div className="modal-body">
           <label className="field">
-            <span>Le cerveau de Max (le chef)</span>
+            <span>Mozak Maxa (šefa)</span>
             <select value={settings.chefModel} onChange={(e) => send({ t: 'settings', settings: { chefModel: e.target.value } })}>
               {CHEF_MODELS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
           </label>
           <label className="field">
-            <span>Le cerveau de l’équipe</span>
+            <span>Mozak tima</span>
             <select value={settings.teamModel} onChange={(e) => send({ t: 'settings', settings: { teamModel: e.target.value } })}>
               {TEAM_MODELS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
           </label>
           <div className="field">
-            <span>Les permissions</span>
-            <label className="radio"><input type="radio" checked={settings.permission === 'auto'} onChange={() => send({ t: 'settings', settings: { permission: 'auto' } })} /> L’équipe décide seule, et lève la main pour les gestes risqués</label>
-            <label className="radio"><input type="radio" checked={settings.permission === 'ask'} onChange={() => send({ t: 'settings', settings: { permission: 'ask' } })} /> Elle demande avant chaque commande</label>
+            <span>Dozvole</span>
+            <label className="radio"><input type="radio" checked={settings.permission === 'auto'} onChange={() => send({ t: 'settings', settings: { permission: 'auto' } })} /> Tim odlučuje sam, a javlja se za rizične korake</label>
+            <label className="radio"><input type="radio" checked={settings.permission === 'ask'} onChange={() => send({ t: 'settings', settings: { permission: 'ask' } })} /> Pita pre svake komande</label>
           </div>
           <div className="field">
-            <span>Le spectacle</span>
-            <label className="radio"><input type="checkbox" checked={voiceOn} onChange={(e) => { useOffice.setState({ voiceOn: e.target.checked }); savePref('voice', e.target.checked); applySound(useOffice.getState().sound); }} /> La voix de Max (« C’est parti ! », « Mission accomplie ! », la visite guidée)</label>
-            <label className="radio"><input type="checkbox" checked={cameraAuto} onChange={(e) => { useOffice.setState({ cameraAuto: e.target.checked }); savePref('cameraAuto', e.target.checked); }} /> En mode tournage, la caméra suit l’action toute seule</label>
+            <span>Predstava</span>
+            <label className="radio"><input type="checkbox" checked={voiceOn} onChange={(e) => { useOffice.setState({ voiceOn: e.target.checked }); savePref('voice', e.target.checked); applySound(useOffice.getState().sound); }} /> Maxov glas („Kreni!”, „Zadatak je završen!”, obilazak)</label>
+            <label className="radio"><input type="checkbox" checked={cameraAuto} onChange={(e) => { useOffice.setState({ cameraAuto: e.target.checked }); savePref('cameraAuto', e.target.checked); }} /> U režimu snimanja kamera sama prati akciju</label>
           </div>
-          <p className="small muted">Les réglages comptent pour la prochaine mission. L’équipe ne travaille que dans le dossier de la mission, et ne lance jamais rien hors du bureau sans te demander.</p>
+          <p className="small muted">Podešavanja važe za sledeći zadatak. Tim radi samo u folderu zadatka i nikad ne pokreće ništa van kancelarije bez tvog pitanja.</p>
           {claude?.found && <p className="small muted">Claude Code {claude.version} · {tilde(dir)}</p>}
           <div className="keys">
-            <b>Raccourcis</b>
-            <span><kbd>V</kbd> cadre vertical (reel)</span>
-            <span><kbd>F</kbd> mode tournage</span>
-            <span><kbd>C</kbd> caméra auto</span>
-            <span><kbd>T</kbd> visite guidée</span>
-            <span><kbd>J</kbd> jukebox</span>
-            <span><kbd>N</kbd> jour, soir, nuit</span>
-            <span><kbd>M</kbd> son</span>
-            <span><kbd>H</kbd> missions précédentes</span>
-            <span><kbd>Échap</kbd> fermer, sortir du tournage</span>
-            <span>🥚 Il y a un code secret… (pense aux vieux jeux vidéo)</span>
+            <b>Prečice</b>
+            <span><kbd>V</kbd> vertikalni kadar (rils)</span>
+            <span><kbd>F</kbd> režim snimanja</span>
+            <span><kbd>C</kbd> auto kamera</span>
+            <span><kbd>T</kbd> obilazak</span>
+            <span><kbd>J</kbd> džuboks</span>
+            <span><kbd>N</kbd> dan, veče, noć</span>
+            <span><kbd>M</kbd> zvuk</span>
+            <span><kbd>H</kbd> prethodni zadaci</span>
+            <span><kbd>Esc</kbd> zatvori, izađi iz snimanja</span>
+            <span>🥚 Postoji tajni kod… (seti se starih video igara)</span>
           </div>
         </div>
       </div>

@@ -9,9 +9,9 @@ import { savePref, useOffice, type Tod } from '../state/store.ts';
 const TOD_NEXT: Record<Tod, Tod> = { auto: 'day', day: 'evening', evening: 'night', night: 'auto' };
 
 const QUOTES = [
-  'Objectif du trimestre : zéro tâche répétitive.',
-  'Règle n°1 du bureau : on délègue tout ce qui se délègue.',
-  'Ici, personne ne compte ses heures. Personne n’en a besoin.',
+  'Cilj kvartala: nula ponavljajućih zadataka.',
+  'Pravilo broj 1 u kancelariji: delegira se sve što može da se delegira.',
+  'Ovde niko ne broji sate. Niko i ne mora.',
 ];
 
 let jukeClicks: number[] = [];

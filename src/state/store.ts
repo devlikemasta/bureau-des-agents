@@ -253,7 +253,7 @@ export const useOffice = create<S>((set, get) => ({
         const first = s.feed.length === 0;
         set({
           chef: { ...s.chef, say: '', typing: '', thinkingAt: at }, final: null, showFinal: false,
-          busySince: at, feed: feed('toi', ev.text, 'user'),
+          busySince: at, feed: feed('ti', ev.text, 'user'),
         });
         if (live && !first) sfx('send');
         if (live) void say('parti');
@@ -285,7 +285,7 @@ export const useOffice = create<S>((set, get) => ({
         const stats = { ...s.stats };
         countStats(stats, ev);
         const firstOfRound = !s.order.some((id) => s.agents[id]?.status === 'working' || s.agents[id]?.status === 'reporting');
-        set({ agents: { ...s.agents, [ev.id]: a }, order: [...s.order, ev.id], stats, feed: feed('Max', `appelle ${ev.name} : ${ev.task}`, 'hire') });
+        set({ agents: { ...s.agents, [ev.id]: a }, order: [...s.order, ev.id], stats, feed: feed('Max', `zove ${ev.name}: ${ev.task}`, 'hire') });
         if (live) sfx('spawn');
         if (live && firstOfRound) void say('equipe');
         break;
@@ -312,7 +312,7 @@ export const useOffice = create<S>((set, get) => ({
       case 'report': {
         const a = s.agents[ev.who];
         if (!a) break;
-        set({ agents: { ...s.agents, [ev.who]: { ...a, report: ev.text, status: 'reporting' } }, feed: feed(a.name, 'rend son rapport à Max', 'report') });
+        set({ agents: { ...s.agents, [ev.who]: { ...a, report: ev.text, status: 'reporting' } }, feed: feed(a.name, 'predaje izveštaj Maxu', 'report') });
         if (live) sfx('paper');
         break;
       }
@@ -324,7 +324,7 @@ export const useOffice = create<S>((set, get) => ({
       }
       case 'file': {
         const files = [...s.files.filter((f) => f.path !== ev.file.path), ev.file].sort((a, b) => a.at - b.at);
-        set({ files, feed: ev.isNew ? feed(agentName(ev.file.by), `a rangé ${ev.file.name}`, 'file') : get().feed });
+        set({ files, feed: ev.isNew ? feed(agentName(ev.file.by), `odložio fajl ${ev.file.name}`, 'file') : get().feed });
         if (live && ev.isNew) sfx('print');
         break;
       }
@@ -344,7 +344,7 @@ export const useOffice = create<S>((set, get) => ({
         const workMs = s.workMs + (s.busySince ? Math.max(0, at - s.busySince) : 0);
         set({
           final: { ok: ev.ok, text: ev.text, ms: ev.ms, stopped: ev.stopped, at }, busySince: null, workMs, asks: {},
-          showFinal: false, feed: feed('Max', ev.ok ? 'Mission accomplie !' : ev.stopped ? 'Mission arrêtée.' : 'La mission s’est mal terminée.', 'end'),
+          showFinal: false, feed: feed('Max', ev.ok ? 'Zadatak je završen!' : ev.stopped ? 'Zadatak je zaustavljen.' : 'Zadatak se loše završio.', 'end'),
         });
         if (live) sfx(ev.ok ? 'done' : 'error');
         if (live && ev.ok) setTimeout(() => { void say('accomplie', true); }, 900);

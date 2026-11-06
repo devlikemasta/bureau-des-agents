@@ -137,8 +137,8 @@ function whiteboard(g: G) {
   rect(g, x + 26, y + h + 1, 5, 1, '#2b2836');
   rect(g, x + w - 18, y + h + 1, 6, 2, '#e9e5ef');
   // le titre, au feutre orange
-  pixelText(g, 'LE PLAN', x + 4, y + 3, P.orangeDark);
-  hline(g, x + 4, y + 9, textWidth('LE PLAN'), P.orange);
+  pixelText(g, 'TABLA', x + 4, y + 3, P.orangeDark);
+  hline(g, x + 4, y + 9, textWidth('TABLA'), P.orange);
 }
 
 const SIGN: Record<string, string> = { chef: 'ŠEF' };
