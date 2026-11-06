@@ -127,6 +127,8 @@ function BoardRoom() {
   const team = useOffice(useShallow(teamList));
   const done = plan.filter((p) => p.status === 'completed').length;
   const steps = useMemo(() => history.map((h, i) => ({ at: h.at, lines: planChanges(i ? history[i - 1].items : null, h.items) })).filter((x) => x.lines.length), [history]);
+  const posmatrac = useOffice((s) => !!s.mission?.posmatrac);
+  if (posmatrac) return <Tabla plan={plan} done={done} team={team} />;
   return (
     <Shell title="Le tableau de Max" sub={plan.length ? `${done} étape${done > 1 ? 's' : ''} faite${done > 1 ? 's' : ''} sur ${plan.length}` : 'Le plan de la mission, et qui fait quoi'}>
       {plan.length > 0 ? (
@@ -163,6 +165,59 @@ function BoardRoom() {
           </ol>
         </section>
       )}
+    </Shell>
+  );
+}
+
+// ── Tabla iza šefa (režim posmatrača): pišu i Claude i Stefan ──
+function Tabla({ plan, done, team }: { plan: PlanItem[]; done: number; team: ReturnType<typeof teamList> }) {
+  const send = useOffice((s) => s.send);
+  const [tekst, setTekst] = useState('');
+  const dodaj = () => {
+    const t = tekst.trim();
+    if (!t) return;
+    sfx('send');
+    send({ t: 'tabla_dodaj', tekst: t });
+    setTekst('');
+  };
+  return (
+    <Shell title="Tabla" sub={plan.length ? `${done} od ${plan.length} precrtano` : 'Plan posla: pišemo i ja i ti'}>
+      {plan.length > 0 && <div className="progress"><i style={{ width: `${(done / plan.length) * 100}%` }} /></div>}
+      <ul className="plan big tabla">
+        {plan.map((p, i) => (
+          <li key={p.id ?? i} className={p.status} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button className="tabla-kvacica" title={p.status === 'completed' ? 'Vrati' : 'Precrtaj'} aria-label={p.status === 'completed' ? 'Vrati stavku' : 'Precrtaj stavku'}
+              onClick={() => { if (!p.id) return; sfx('check'); send({ t: 'tabla_precrtaj', id: p.id }); }}
+              style={{ background: 'none', border: 0, padding: 0, cursor: 'pointer', display: 'flex' }}><i /></button>
+            <span style={{ flex: 1, textDecoration: p.status === 'completed' ? 'line-through' : 'none' }}>{p.text}</span>
+            <small className="muted" title={p.ko === 'stefan' ? 'Napisao Stefan' : 'Napisao Claude'}>{p.ko === 'stefan' ? 'ti' : 'Claude'}</small>
+            {p.id && <button title="Obriši" aria-label="Obriši stavku" onClick={() => { sfx('click'); send({ t: 'tabla_obrisi', id: p.id! }); }}
+              style={{ background: 'none', border: 0, cursor: 'pointer', color: 'inherit', opacity: 0.6, fontSize: 16 }}>×</button>}
+          </li>
+        ))}
+      </ul>
+      {!plan.length && <p className="muted">Tabla je prazna. Dodaj stavku, ili sačekaj da Claude upiše plan.</p>}
+      <form onSubmit={(e) => { e.preventDefault(); dodaj(); }} style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+        <input value={tekst} onChange={(e) => setTekst(e.target.value)} maxLength={120} placeholder="Nova stavka za Claude-a…" aria-label="Nova stavka"
+          style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: '1px solid rgba(255,255,255,.15)', background: 'rgba(0,0,0,.25)', color: 'inherit', font: 'inherit' }} />
+        <button className="btn" type="submit" disabled={!tekst.trim()}>Dodaj</button>
+      </form>
+      <p className="muted small" style={{ marginTop: 6 }}>Claude vidi tvoje izmene na tabli kad mu pošalješ sledeću poruku.</p>
+      <section className="room-sec">
+        <h4>Ko šta radi <span className="count">{team.length}</span></h4>
+        {team.length ? (
+          <div className="who">
+            {team.map((a) => (
+              <button key={a.id} className={`who-row ${a.status}`} style={{ ['--c' as string]: ROLES[a.role].color }} onClick={() => { sfx('open'); useOffice.setState({ modal: { kind: 'agent', id: a.id } }); }}>
+                <Avatar role={a.role} size={26} />
+                <b>{a.name}</b>
+                <span className="who-task">{a.task}</span>
+                <span className="who-state">{a.status === 'done' ? '✓ gotovo' : a.status === 'failed' ? '✕ nije završio' : a.status === 'reporting' ? '📄 predaje rezultat' : '… radi'}</span>
+              </button>
+            ))}
+          </div>
+        ) : <p className="muted small">Danas još niko.</p>}
+      </section>
     </Shell>
   );
 }

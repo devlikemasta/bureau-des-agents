@@ -24,6 +24,21 @@ process.stdin.on('end', async () => {
   let h;
   try { h = JSON.parse(raw); } catch { done(); }
   if (!h?.session_id || !akt.sesije?.[h.session_id]) done();
+  // Pre Stefanove poruke: šta je on menjao na tabli? Tekst na stdout ide u razgovor kao kontekst.
+  if (h.hook_event_name === 'UserPromptSubmit') {
+    try {
+      const r = await fetch(`http://127.0.0.1:${akt.port}/tabla/nevidjeno`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-kancelarija-token': akt.token },
+        body: JSON.stringify({ session_id: h.session_id }),
+        signal: AbortSignal.timeout(500),
+      });
+      const text = r.ok ? (await r.text()).trim() : '';
+      // izlaz tek kad se stdout isprazni, inače se tekst može izgubiti
+      if (text) { process.stdout.write(text + '\n', done); return; }
+    } catch { /* bez table ove poruke */ }
+    done();
+  }
   try {
     await fetch(`http://127.0.0.1:${akt.port}/hook`, {
       method: 'POST',

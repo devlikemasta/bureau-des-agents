@@ -10,7 +10,7 @@ AKT="$DIR/aktivno.json"
 URL="http://localhost:${PORT:-4848}"
 mkdir -p "$DIR"
 
-pid() { node -e 'try{const a=require(process.argv[1]);process.kill(a.pid,0);console.log(a.pid)}catch{}' "$AKT" 2>/dev/null || true; }
+pid() { node -e 'try{const a=require(process.argv[1]);if(a.pid>0){process.kill(a.pid,0);console.log(a.pid)}}catch{}' "$AKT" 2>/dev/null || true; }
 
 case "${1:-status}" in
   upali)

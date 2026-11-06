@@ -19,6 +19,7 @@ import { Bureau } from './bureau.ts';
 import { findClaude } from './claude.ts';
 import { Observer, type HookMsg } from './observer.ts';
 import { Projekti, type Projekat } from './projekti.ts';
+import { Tabla } from './tabla.ts';
 import { watch } from 'node:fs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -89,18 +90,29 @@ function projekatOf(m: HookMsg): { slug: string; p: Projekat | null } {
   return { slug: p?.slug || slug || (m.cwd ? path.basename(m.cwd) : 'kancelarija'), p };
 }
 
+const TABLE_DIR = path.join(KANC, 'tabla');
+const table = new Map<string, Tabla>();
+const tablaOf = (slug: string) => { let t = table.get(slug); if (!t) { t = new Tabla(TABLE_DIR, slug); table.set(slug, t); } return t; };
+const pokaziTablu = () => { if (aktivanSlug) bureau.observe({ k: 'plan', items: tablaOf(aktivanSlug).items() }); };
+
 function prikazi(slug: string, p: Projekat | null) {
   const promena = slug !== aktivanSlug || JSON.stringify(p?.odeljenja) !== JSON.stringify(aktivan?.odeljenja);
   aktivan = p; aktivanSlug = slug;
   if (promena) broadcast({ t: 'odeljenja', list: Projekti.odeljenja(p) });
 }
 
-const observer = new Observer((ev) => bureau.observe(ev), (_session, dept) => Projekti.slotOf(aktivan, dept));
+const observer = new Observer((ev) => {
+  // Claudeov plan ide na tablu projekta, zajedno sa Stefanovim stavkama
+  if (ev.k === 'plan' && aktivanSlug) { tablaOf(aktivanSlug).izPlana(ev.items); pokaziTablu(); return; }
+  bureau.observe(ev);
+}, (_session, dept) => Projekti.slotOf(aktivan, dept));
 
 function onHook(m: HookMsg) {
   const { slug, p } = projekatOf(m);
   prikazi(slug, p);
+  const pre = bureau.current?.mission.id;
   bureau.beginObserve(p?.ime || slug, m.cwd ?? os.homedir());
+  if (bureau.current?.mission.id !== pre) pokaziTablu();
   observer.handle(m);
 }
 
@@ -108,6 +120,37 @@ function onHook(m: HookMsg) {
 try {
   watch(projekti.dir, () => { if (aktivanSlug) prikazi(aktivanSlug, projekti.load(aktivanSlug)); }).on('error', () => {});
 } catch { /* bez praćenja: promena se vidi na sledećem događaju */ }
+
+/** Hook na UserPromptSubmit pita: šta je Stefan menjao na tabli od poslednje poruke? */
+async function nevidjenoRoute(req: http.IncomingMessage, res: http.ServerResponse) {
+  if (req.method !== 'POST' || req.headers['x-kancelarija-token'] !== TOKEN) { res.writeHead(403).end(); return; }
+  let body = '';
+  for await (const chunk of req) { body += chunk; if (body.length > 10_000) { res.writeHead(413).end(); return; } }
+  let slug = '';
+  try { slug = readAktivno()?.sesije?.[(JSON.parse(body) as { session_id?: string }).session_id ?? '']?.projekat ?? ''; } catch { /* prazno */ }
+  // samo šef vidi izmene (zamenik ih ne "troši")
+  const uloga = (() => { try { return readAktivno()?.sesije?.[(JSON.parse(body) as { session_id: string }).session_id]?.uloga; } catch { return ''; } })();
+  const text = slug && uloga !== 'zamenik' ? tablaOf(slug).nevidjeno() : '';
+  res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' }).end(text);
+}
+
+/** scripts/tabla.mjs: Claude precrtava ili dopisuje stavku na tabli svog projekta. */
+async function claudeTablaRoute(req: http.IncomingMessage, res: http.ServerResponse) {
+  if (req.method !== 'POST' || req.headers['x-kancelarija-token'] !== TOKEN) { res.writeHead(403).end(); return; }
+  let body = '';
+  for await (const chunk of req) { body += chunk; if (body.length > 10_000) { res.writeHead(413).end(); return; } }
+  let m: { session_id?: string; op?: string; tekst?: string } = {};
+  try { m = JSON.parse(body); } catch { /* prazno */ }
+  const slug = readAktivno()?.sesije?.[m.session_id ?? '']?.projekat ?? '';
+  if (!slug) { res.writeHead(404).end('Sesija nije prijavljena u kancelariju.'); return; }
+  const t = tablaOf(slug);
+  let out = '';
+  if (m.op === 'precrtaj') { const x = t.claudePrecrta(str(m.tekst, 200)); out = x ? `Precrtano: ${x}` : 'Nema takve otvorene stavke.'; }
+  else if (m.op === 'dodaj') { t.claudeDoda(str(m.tekst, 200)); out = 'Dodato.'; }
+  else if (m.op === 'spisak') out = t.items().map((x) => `${x.status === 'completed' ? '✓' : '·'} ${x.text}${x.ko === 'stefan' ? ' (Stefan)' : ''}`).join('\n') || '(prazno)';
+  if (slug === aktivanSlug && m.op !== 'spisak') pokaziTablu();
+  res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' }).end(out);
+}
 
 async function hookRoute(req: http.IncomingMessage, res: http.ServerResponse) {
   if (req.method !== 'POST' || req.headers['x-kancelarija-token'] !== TOKEN) { res.writeHead(403).end(); return; }
@@ -121,6 +164,8 @@ async function hookRoute(req: http.IncomingMessage, res: http.ServerResponse) {
 const server = http.createServer(async (req, res) => {
   const url0 = new URL(req.url ?? '/', 'http://x');
   if (url0.pathname === '/hook') { await hookRoute(req, res); return; }
+  if (url0.pathname === '/tabla/nevidjeno') { await nevidjenoRoute(req, res); return; }
+  if (url0.pathname === '/tabla/claude') { await claudeTablaRoute(req, res); return; }
   if (url0.pathname.startsWith('/apercu/')) { await preview(url0, res); return; }
   if (DEV) { res.writeHead(404).end(`Mode développement : le bureau est sur http://localhost:${DEV_PORT}`); return; }
   try {
@@ -244,6 +289,15 @@ async function handle(m: ClientMsg, send: (m: ServerMsg) => void) {
     case 'settings':
       bureau.setSettings(m.settings ?? {});
       break;
+    case 'tabla_dodaj': case 'tabla_precrtaj': case 'tabla_obrisi': {
+      if (!aktivanSlug) { send({ t: 'toast', kind: 'info', text: 'Kancelarija još ne prati nijedan projekat.' }); break; }
+      const t = tablaOf(aktivanSlug);
+      if (m.t === 'tabla_dodaj') t.dodaj(str(m.tekst, 200));
+      else if (m.t === 'tabla_precrtaj') t.precrtaj(str(m.id, 40));
+      else t.obrisi(str(m.id, 40));
+      pokaziTablu();
+      break;
+    }
   }
 }
 

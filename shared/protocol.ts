@@ -11,7 +11,7 @@ export interface Odeljenje { slot: Role; naziv: string; ikona: string; boja: str
 /** Ce que fait un agent à un instant : sert à l'animation, à l'icône et à la bulle. */
 export type ActKind = 'search' | 'web' | 'read' | 'write' | 'edit' | 'bash' | 'plan' | 'skill' | 'mcp' | 'other';
 
-export interface PlanItem { text: string; status: 'pending' | 'in_progress' | 'completed' }
+export interface PlanItem { text: string; status: 'pending' | 'in_progress' | 'completed'; id?: string; ko?: 'claude' | 'stefan' }
 
 /** Un fichier produit par l'équipe, dans le dossier de la mission. */
 export interface FileInfo { path: string; name: string; ext: string; size: number; at: number; by: string }
@@ -115,7 +115,10 @@ export type ClientMsg =
   | { t: 'versions'; missionId: string; file: string }
   | { t: 'team_history' }
   | { t: 'replay'; missionId: string }
-  | { t: 'settings'; settings: Partial<Settings> };
+  | { t: 'settings'; settings: Partial<Settings> }
+  | { t: 'tabla_dodaj'; tekst: string }
+  | { t: 'tabla_precrtaj'; id: string }
+  | { t: 'tabla_obrisi'; id: string };
 
 // ── Serveur → navigateur ──
 export type ServerMsg =
