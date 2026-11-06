@@ -202,6 +202,36 @@ export class Bureau {
     this.say(text);
   }
 
+  // ── Režim posmatrača ──
+  /** Otvara posmatračku misiju za projekat (ili ostavlja postojeću ako je ista). */
+  beginObserve(title: string, folder: string) {
+    const c = this.current;
+    if (c?.mission.posmatrac && c.mission.status === 'working' && c.mission.title === title) return;
+    if (c) this.close();
+    const mission: MissionInfo = {
+      id: 'm' + Date.now().toString(36), title, prompt: '', folder, createdAt: Date.now(), workMs: 0,
+      status: 'working', stats: emptyStats(), files: [], posmatrac: true,
+    };
+    this.state.missions.push(mission);
+    if (this.state.missions.length > MAX_MISSIONS) this.state.missions.splice(0, this.state.missions.length - MAX_MISSIONS);
+    this.save();
+    // bez praćenja fajlova: folder projekta može biti ogroman (npr. ~)
+    this.current = {
+      mission, log: [], live: null, names: new Set(), watcher: null, fileTimers: new Map(), idleTimer: null,
+      busySince: Date.now(), stopAsked: false, lastChefText: '',
+    };
+    this.broadcast({ t: 'mission', mission });
+  }
+
+  /** Događaj iz posmatrača (hookovi naših sesija). */
+  observe(ev: OfficeEvent) {
+    const cur = this.current;
+    if (!cur || !cur.mission.posmatrac) return;
+    countStats(cur.mission.stats, ev);
+    this.record(cur, ev);
+    if (ev.k === 'hire' || ev.k === 'leave') this.save();
+  }
+
   /** Parler à Max : la mission, puis les retouches. S'il s'était endormi, il reprend sa séance. */
   say(text: string) {
     const cur = this.current;

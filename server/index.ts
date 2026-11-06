@@ -6,15 +6,18 @@
 //   node server/index.ts --open     … et l'ouvre dans le navigateur
 //   node server/index.ts --dev      seulement le pont (le bureau est servi par Vite, port 5174)
 import { execFile } from 'node:child_process';
-import { existsSync, statSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
+import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import http from 'node:http';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer, type WebSocket } from 'ws';
 import type { ClientMsg, ServerMsg } from '../shared/protocol.ts';
 import { Bureau } from './bureau.ts';
 import { findClaude } from './claude.ts';
+import { Observer, type HookMsg } from './observer.ts';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = path.join(ROOT, 'dist');
@@ -52,12 +55,46 @@ function broadcast(m: ServerMsg) {
   for (const c of clients) if (c.readyState === c.OPEN) c.send(s);
 }
 
-const bureau = new Bureau(claude, broadcast, process.env.BUREAU_DIR);
+const KANC = process.env.KANCELARIJA_DIR ?? path.join(os.homedir(), '.kancelarija');
+const bureau = new Bureau(claude, broadcast, process.env.BUREAU_DIR ?? path.join(KANC, 'bureau'));
 await bureau.init();
+
+// ── Režim posmatrača: hookovi naših sesija javljaju šta rade agenti ──
+// ~/.kancelarija/aktivno.json kaže hooku da kancelarija radi (port, pid, token) i koje sesije prati.
+const AKTIVNO = path.join(KANC, 'aktivno.json');
+const TOKEN = randomBytes(18).toString('hex');
+interface Aktivno { port: number; pid: number; token: string; sesije: Record<string, { projekat?: string; uloga?: string; ime?: string }> }
+function readAktivno(): Aktivno | null {
+  try { return JSON.parse(readFileSync(AKTIVNO, 'utf8')) as Aktivno; } catch { return null; }
+}
+function writeAktivno(pid: number) {
+  mkdirSync(KANC, { recursive: true });
+  const prev = readAktivno();
+  const next: Aktivno = { port: PORT, pid, token: pid ? TOKEN : '', sesije: prev?.sesije ?? {} };
+  writeFileSync(AKTIVNO + '.tmp', JSON.stringify(next, null, 1), { mode: 0o600 });
+  renameSync(AKTIVNO + '.tmp', AKTIVNO);
+}
+const observer = new Observer((ev) => bureau.observe(ev));
+
+function onHook(m: HookMsg) {
+  const ses = readAktivno()?.sesije?.[m.session_id];
+  const title = ses?.projekat || (m.cwd ? path.basename(m.cwd) : 'Kancelarija');
+  bureau.beginObserve(title, m.cwd ?? os.homedir());
+  observer.handle(m);
+}
+
+async function hookRoute(req: http.IncomingMessage, res: http.ServerResponse) {
+  if (req.method !== 'POST' || req.headers['x-kancelarija-token'] !== TOKEN) { res.writeHead(403).end(); return; }
+  let body = '';
+  for await (const chunk of req) { body += chunk; if (body.length > 400_000) { res.writeHead(413).end(); return; } }
+  res.writeHead(204).end();
+  try { onHook(JSON.parse(body) as HookMsg); } catch (e) { console.error('  ⚠  hook:', e instanceof Error ? e.message : e); }
+}
 
 // ── Le serveur web (le bureau compilé) ──
 const server = http.createServer(async (req, res) => {
   const url0 = new URL(req.url ?? '/', 'http://x');
+  if (url0.pathname === '/hook') { await hookRoute(req, res); return; }
   if (url0.pathname.startsWith('/apercu/')) { await preview(url0, res); return; }
   if (DEV) { res.writeHead(404).end(`Mode développement : le bureau est sur http://localhost:${DEV_PORT}`); return; }
   try {
@@ -193,6 +230,7 @@ function listen(port: number) {
     throw e;
   });
   server.listen(port, HOST, () => {
+    writeAktivno(process.pid);
     const url = `http://localhost:${port}`;
     console.log('');
     console.log('  🏢  Le Bureau des agents');
@@ -212,6 +250,8 @@ listen(PORT);
 
 for (const sig of ['SIGINT', 'SIGTERM'] as const) {
   process.on(sig, () => {
+    try { writeAktivno(0); } catch { /* svejedno: hook proverava i pid */ }
+    observer.clear();
     bureau.shutdown();
     setTimeout(() => process.exit(0), 300);
   });

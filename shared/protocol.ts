@@ -34,6 +34,8 @@ export interface MissionInfo {
   files: FileInfo[];
   /** le dernier message du chef, une fois la mission rendue */
   final?: string;
+  /** režim posmatrača: agenti dolaze iz naših Claude Code sesija (hookovi), ne iz Maxa */
+  posmatrac?: boolean;
 }
 
 /**
@@ -47,7 +49,7 @@ export type OfficeEvent =
   | { k: 'typing'; who: string; text: string }
   | { k: 'say'; who: string; text: string }
   | { k: 'plan'; items: PlanItem[] }
-  | { k: 'hire'; id: string; role: Role; type: string; name: string; task: string; prompt: string }
+  | { k: 'hire'; id: string; role: Role; type: string; name: string; task: string; prompt: string; model?: string; dept?: string }
   | { k: 'act'; who: string; id: string; kind: ActKind; tool: string; label: string; detail: string }
   | { k: 'act_done'; who: string; id: string; ok: boolean }
   /** le rapport qu'un agent rend au chef */

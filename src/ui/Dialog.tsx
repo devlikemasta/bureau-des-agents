@@ -175,6 +175,11 @@ function Composer() {
     setText('');
   };
 
+  // režim posmatrača: šef je naša Claude Code sesija, ovde se ništa ne zadaje
+  if (mission?.posmatrac) {
+    return <div className="composer" style={{ padding: '10px 14px', opacity: 0.8, fontSize: 13 }}>👀 Šef radi iz Claude Code chata. Kancelarija samo prikazuje agente.</div>;
+  }
+
   return (
     <div className="composer">
       <div className={`composer-row ${dict.listening ? 'listening' : ''}`}>
