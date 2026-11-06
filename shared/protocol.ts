@@ -6,6 +6,9 @@
 export type Role = 'chef' | 'recherche' | 'code' | 'design' | 'redaction' | 'analyse' | 'sesti' | 'renfort';
 
 /** Odeljenje projekta, smešteno u jedan od 6 kutaka kancelarije (slot). */
+/** Red dnevnog loga: jedan agent koji je radio danas. */
+export interface DnevnikRed { at: number; ime: string; odeljenje: string; zadatak: string; model: string; tokeni: number; alati: number; ms: number; ok: boolean }
+
 export interface Odeljenje { slot: Role; naziv: string; ikona: string; boja: string }
 
 /** Ce que fait un agent à un instant : sert à l'animation, à l'icône et à la bulle. */
@@ -118,12 +121,14 @@ export type ClientMsg =
   | { t: 'settings'; settings: Partial<Settings> }
   | { t: 'tabla_dodaj'; tekst: string }
   | { t: 'tabla_precrtaj'; id: string }
-  | { t: 'tabla_obrisi'; id: string };
+  | { t: 'tabla_obrisi'; id: string }
+  | { t: 'dnevnik' };
 
 // ── Serveur → navigateur ──
 export type ServerMsg =
   | { t: 'hello'; claude: ClaudeInfo; dir: string; settings: Settings; quota: Quota | null; missions: MissionInfo[]; current: { mission: MissionInfo; log: Logged[] } | null; build?: string; odeljenja?: Odeljenje[] }
   | { t: 'odeljenja'; list: Odeljenje[] }
+  | { t: 'dnevnik'; projekat: string; redovi: DnevnikRed[] }
   | { t: 'mission'; mission: MissionInfo }
   | { t: 'ev'; missionId: string; at: number; ev: OfficeEvent }
   | { t: 'closed'; missionId: string }

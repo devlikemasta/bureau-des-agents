@@ -6,6 +6,7 @@ import { Cat } from './cat.ts';
 import { Fx } from './fx.ts';
 import { iconFor } from './icons.ts';
 import { CHEF_SEAT, SEATS, SPOTS, T, WINDOWS, tileFeet, walkGrid, type Seat } from './layout.ts';
+import { bus } from '../state/bus.ts';
 import { findPath, type Tile } from './path.ts';
 import type { Dir, Eyes, Pose } from './robots.ts';
 
@@ -52,6 +53,8 @@ export class Actor {
   reported = false;
   delivered = false;
   left = false;
+  /** režim posmatrača: agent se vratio sa greškom i čeka klik */
+  failed = false;
   gone = false;
   animT = 0;
   nextBlink = 1 + Math.random() * 3;
@@ -278,6 +281,8 @@ export class World {
       }
       case 'hire': {
         if (this.actors.has(ev.id)) break;
+        // novi agent u odeljenju oslobađa onog koji je tu ostao sa greškom
+        if (bus.posmatrac) for (const x of this.actors.values()) if (x.failed && x.role === ev.role) this.dismiss(x.id);
         const seat = this.assignSeat(ev.role);
         const a = new Actor(ev.id, ev.role, ev.name, SPOTS.doorOut.x - 8 + Math.random() * 16, SPOTS.doorOut.y);
         if (!this.assignments.some((x) => x.id === ev.id)) this.assignments.push({ id: ev.id, role: ev.role, name: ev.name, task: ev.task, status: 'working' });
@@ -326,6 +331,12 @@ export class World {
         if (!a || a.left) break;
         a.left = true;
         if (!live) { this.remove(a); break; }
+        if (bus.posmatrac) {
+          // uspeh: „Gotovo” ~5 s za stolom, pa preda rezultat šefu i ode; greška: ostaje dok ga ne pustiš
+          if (ev.ok) { this.queue(a, { t: 'wait', ms: 5000 }); a.reported = true; this.deliver(a); this.exit(a); }
+          else { a.failed = true; a.sadUntil = this.time + 3600; }
+          break;
+        }
         if (ev.ok && !a.reported) { a.reported = true; this.deliver(a); }
         if (!ev.ok) a.sadUntil = this.time + 2;
         this.exit(a);
@@ -410,6 +421,15 @@ export class World {
   }
 
   /** Il repart par la porte (et libère son bureau). */
+  /** Agent sa greškom (režim posmatrača) dobija dozvolu da ode. */
+  dismiss(id: string) {
+    const a = this.actors.get(id);
+    if (!a || !a.failed) return;
+    a.failed = false;
+    a.sadUntil = 0;
+    this.exit(a);
+  }
+
   private exit(a: Actor) {
     this.queue(a,
       { t: 'call', fn: () => { if (a.seat) this.seatOf.delete(a.seat.id); } },

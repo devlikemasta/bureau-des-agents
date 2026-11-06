@@ -10,6 +10,7 @@ import { interact } from './interact.ts';
 import { H, W } from '../engine/layout.ts';
 import { sfx } from '../audio/sfx.ts';
 import { useOffice, type AskView } from '../state/store.ts';
+import { bus } from '../state/bus.ts';
 
 const ICON: Record<ActKind, string> = {
   search: '🔎', web: '🌐', read: '📖', write: '✍️', edit: '✏️', bash: '💻', plan: '📋', skill: '🎓', mcp: '🔌', other: '⚙️',
@@ -270,6 +271,13 @@ function Bubbles() {
       return { ...base, mode: filming ? 'none' : 'tag' };
     }
     if (!a || !actor) return { ...base, mode: 'none' };
+    // režim posmatrača: za stolom uvek piše zadatak; po završetku „Gotovo”, a greška ostaje crvena
+    if (bus.posmatrac && actor.seated && !actor.moving) {
+      if (actor.failed) return { ...base, color: '#e5484d', mode: 'full', text: 'Greška · klikni me', icon: '✕' };
+      if (a.status === 'done') return { ...base, color: '#2fbf71', mode: 'full', text: 'Gotovo', icon: '✓' };
+      const act = a.act && now - a.act.at < 7000 ? a.act : null;
+      return { ...base, mode: 'full', text: short(a.task), icon: act ? ICON[act.kind] : '💼' };
+    }
     // en marche : juste son nom (avec sa feuille s'il apporte son rapport)
     if (actor.moving || !actor.seated) return { ...base, mode: 'tag', icon: actor.carrying ? '📄' : undefined };
     if (a.act && now - a.act.at < 7000) {

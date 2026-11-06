@@ -3,8 +3,7 @@
 import { create } from 'zustand';
 import { countStats, emptyStats } from '../../shared/activity.ts';
 import type {
-  ActKind, ClaudeInfo, ClientMsg, FileInfo, MissionInfo, MissionStats, OfficeEvent, PlanItem, Quota, Role, ServerMsg, Settings, TeamEntry, VersionInfo,
-} from '../../shared/protocol.ts';
+  ActKind, ClaudeInfo, ClientMsg, FileInfo, MissionInfo, MissionStats, OfficeEvent, PlanItem, Quota, Role, ServerMsg, Settings, TeamEntry, VersionInfo, DnevnikRed } from '../../shared/protocol.ts';
 import { sfx } from '../audio/sfx.ts';
 import { say } from '../audio/voice.ts';
 import { bus } from './bus.ts';
@@ -27,6 +26,8 @@ export interface AgentView {
   leftAt?: number;
   tokens: number;
   tools: number;
+  model?: string;
+  dept?: string;
 }
 
 export interface ChefView {
@@ -55,6 +56,7 @@ export type Modal =
   | { kind: 'jukebox' }
   | { kind: 'team'; role?: Role }
   | { kind: 'files' }
+  | { kind: 'dnevnik' }
   | { kind: 'preview'; missionId: string; file: string };
 
 interface S {
@@ -86,6 +88,8 @@ interface S {
   /** les versions de chaque rendu (clé : mission|fichier) */
   versions: Record<string, VersionInfo[]>;
   teamHistory: TeamEntry[] | null;
+  /** dnevni log projekta (režim posmatrača) */
+  dnevnik: { projekat: string; redovi: DnevnikRed[] } | null;
   /** chaque version du plan, dans l'ordre (le tableau garde l'historique) */
   planHistory: { at: number; items: PlanItem[] }[];
   music: { playing: boolean; index: number; volume: number };
@@ -150,6 +154,7 @@ export const useOffice = create<S>((set, get) => ({
   modal: null,
   versions: {},
   teamHistory: null,
+  dnevnik: null,
   planHistory: [],
   music: { playing: false, index: 0, volume: 0.55 },
   voiceOn: pref('voice', true),
@@ -177,6 +182,7 @@ export const useOffice = create<S>((set, get) => ({
       mission: m, chef: emptyChef(), agents: {}, order: [], plan: [], files: [], asks: {}, stats: emptyStats(),
       feed: [], final: null, busySince: null, workMs: 0, showFinal: false, planHistory: [],
     });
+    bus.posmatrac = !!m?.posmatrac;
     bus.reset();
   },
 
@@ -216,6 +222,9 @@ export const useOffice = create<S>((set, get) => ({
         break;
       case 'team_history':
         set({ teamHistory: m.entries });
+        break;
+      case 'dnevnik':
+        set({ dnevnik: { projekat: m.projekat, redovi: m.redovi } });
         break;
       case 'quota':
         set({ quota: m.quota });
@@ -271,7 +280,7 @@ export const useOffice = create<S>((set, get) => ({
       case 'hire': {
         const a: AgentView = {
           id: ev.id, role: ev.role, name: ev.name, task: ev.task, prompt: ev.prompt, status: 'working', act: null, acts: [],
-          say: '', sayAt: 0, report: '', hiredAt: at, tokens: 0, tools: 0,
+          say: '', sayAt: 0, report: '', hiredAt: at, tokens: 0, tools: 0, model: ev.model, dept: ev.dept,
         };
         const stats = { ...s.stats };
         countStats(stats, ev);

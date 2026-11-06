@@ -20,6 +20,7 @@ import { findClaude } from './claude.ts';
 import { Observer, type HookMsg } from './observer.ts';
 import { Projekti, type Projekat } from './projekti.ts';
 import { Tabla } from './tabla.ts';
+import { Dnevnik } from './dnevnik.ts';
 import { watch } from 'node:fs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -101,11 +102,23 @@ function prikazi(slug: string, p: Projekat | null) {
   if (promena) broadcast({ t: 'odeljenja', list: Projekti.odeljenja(p) });
 }
 
+const dnevnik = new Dnevnik(path.join(KANC, 'log'));
+const zaposleni = new Map<string, { ime: string; odeljenje: string; zadatak: string; model: string; at: number }>();
+
 const observer = new Observer((ev) => {
   // Claudeov plan ide na tablu projekta, zajedno sa Stefanovim stavkama
   if (ev.k === 'plan' && aktivanSlug) { tablaOf(aktivanSlug).izPlana(ev.items); pokaziTablu(); return; }
+  if (ev.k === 'hire' && ev.type !== 'zamenik') zaposleni.set(ev.id, { ime: ev.name, odeljenje: ev.dept ?? '', zadatak: ev.task, model: ev.model ?? '', at: Date.now() });
+  if (ev.k === 'leave') {
+    const z = zaposleni.get(ev.who);
+    zaposleni.delete(ev.who);
+    if (z && aktivanSlug) dnevnik.upisi(aktivanSlug, { ...z, at: Date.now(), tokeni: ev.tokens, alati: ev.tools, ms: ev.ms, ok: ev.ok });
+  }
   bureau.observe(ev);
-}, (_session, dept) => Projekti.slotOf(aktivan, dept));
+}, (_session, dept) => Projekti.slotOf(aktivan, dept), (session) => {
+  const s = readAktivno()?.sesije?.[session];
+  return { uloga: s?.uloga ?? 'sef', ime: s?.ime ?? '' };
+});
 
 function onHook(m: HookMsg) {
   const { slug, p } = projekatOf(m);
@@ -245,18 +258,14 @@ const str = (v: unknown, max = 20000) => (typeof v === 'string' ? v.slice(0, max
 
 async function handle(m: ClientMsg, send: (m: ServerMsg) => void) {
   switch (m.t) {
-    case 'start':
-      await bureau.start(str(m.prompt));
+    case 'start': case 'say': case 'stop': case 'answer':
+      // režim posmatrača: Max se ne pokreće iz kancelarije, šef je Claude Code chat
+      if (bureau.current?.mission.posmatrac || m.t === 'start') { send({ t: 'toast', kind: 'info', text: 'Zadatke daješ u Claude Code chatu. Kancelarija samo prikazuje agente.' }); break; }
+      if (m.t === 'say') bureau.say(str(m.text));
+      else if (m.t === 'stop') bureau.stop();
+      else bureau.answer(str(m.requestId, 100), m.allow === true);
       break;
-    case 'say':
-      bureau.say(str(m.text));
-      break;
-    case 'stop':
-      bureau.stop();
-      break;
-    case 'answer':
-      bureau.answer(str(m.requestId, 100), m.allow === true);
-      break;
+
     case 'new':
       bureau.close();
       break;
@@ -288,6 +297,9 @@ async function handle(m: ClientMsg, send: (m: ServerMsg) => void) {
     }
     case 'settings':
       bureau.setSettings(m.settings ?? {});
+      break;
+    case 'dnevnik':
+      send({ t: 'dnevnik', projekat: aktivan?.ime || aktivanSlug, redovi: aktivanSlug ? dnevnik.danas(aktivanSlug) : [] });
       break;
     case 'tabla_dodaj': case 'tabla_precrtaj': case 'tabla_obrisi': {
       if (!aktivanSlug) { send({ t: 'toast', kind: 'info', text: 'Kancelarija još ne prati nijedan projekat.' }); break; }

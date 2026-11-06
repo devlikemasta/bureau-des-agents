@@ -64,7 +64,11 @@ export function interact(hit: Hit) {
     case 'clock': sfx('open'); useOffice.setState({ modal: { kind: 'clock' } }); return;
     case 'rack': sfx('open'); useOffice.setState({ modal: { kind: 'machine' } }); return;
     case 'printer': sfx('open'); useOffice.setState({ modal: { kind: 'files' } }); return;
-    case 'shelf': sfx('open'); useOffice.setState({ historyOpen: true }); return;
+    case 'shelf':
+      sfx('open');
+      if (st.mission?.posmatrac) { st.send({ t: 'dnevnik' }); useOffice.setState({ modal: { kind: 'dnevnik' } }); }
+      else useOffice.setState({ historyOpen: true });
+      return;
     case 'door': sfx('open'); useOffice.setState({ modal: { kind: 'team' } }); return;
     case 'neon': world.neonNext(); sfx('check'); return;
     case 'window': { const n = TOD_NEXT[st.tod]; useOffice.setState({ tod: n }); savePref('tod', n); sfx('click'); return; }

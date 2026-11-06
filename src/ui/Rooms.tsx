@@ -46,6 +46,7 @@ export function Rooms() {
     case 'jukebox': return <JukeboxRoom />;
     case 'team': return <TeamRoom role={modal.role} />;
     case 'files': return <FilesRoom />;
+    case 'dnevnik': return <DnevnikRoom />;
     case 'preview': return <PreviewRoom missionId={modal.missionId} file={modal.file} />;
   }
 }
@@ -65,6 +66,10 @@ function AgentRoom({ id }: { id: string }) {
         <div>
           <span className={`pill-status ${a.status}`}>{working ? (live?.seated ? 'Au travail' : 'En chemin') : a.status === 'done' ? 'A rendu son travail' : 'N’a pas pu finir'}</span>
           <p className="now">{working && a.act ? <><i>{ICON[a.act.kind]}</i>{a.act.label}</> : a.status === 'done' ? 'Son rapport est sur le bureau de Max.' : working ? 'Il s’installe à son poste…' : ''}</p>
+          {a.model || a.tokens ? (
+            <p className="small muted">Model: <b>{modelName(a.model)}</b>{a.tokens ? <> · tokeni: <b>{a.tokens.toLocaleString('sr-RS')}</b></> : null}{a.tools ? ` · alata: ${a.tools}` : ''}{a.leftAt ? ` · trajanje: ${fmtDuration(a.leftAt - a.hiredAt)}` : ''}</p>
+          ) : null}
+          {live?.failed && <button className="btn" onClick={() => { sfx('click'); world.dismiss(id); }}>Pusti ga da ode</button>}
           <p className="small muted">Un vrai sous-agent Claude Code (« {role.type || 'renfort'} »), avec ses propres outils : {ROLE_TOOLS[a.role].join(', ') || 'ceux de Max'}.</p>
         </div>
       </div>
@@ -89,6 +94,13 @@ function AgentRoom({ id }: { id: string }) {
       )}
     </Shell>
   );
+}
+
+/** claude-haiku-5-5 → Haiku 5.5 */
+function modelName(m?: string) {
+  if (!m) return '?';
+  const x = m.match(/(haiku|sonnet|opus|fable)-(\d+)-(\d+)/i);
+  return x ? `${x[1][0].toUpperCase()}${x[1].slice(1)} ${x[2]}.${x[3]}` : m;
 }
 
 function ActList({ acts }: { acts: ActView[] }) {
@@ -218,6 +230,32 @@ function Tabla({ plan, done, team }: { plan: PlanItem[]; done: number; team: Ret
           </div>
         ) : <p className="muted small">Danas još niko.</p>}
       </section>
+    </Shell>
+  );
+}
+
+// ── Dnevni log (polica): ko je danas radio, koliko dugo i koliko tokena ──
+function DnevnikRoom() {
+  const d = useOffice((s) => s.dnevnik);
+  const redovi = d?.redovi ?? [];
+  const ukupno = redovi.reduce((n, r) => n + r.tokeni, 0);
+  const ms = redovi.reduce((n, r) => n + r.ms, 0);
+  return (
+    <Shell title="Danas u kancelariji" sub={d ? `${d.projekat} · ${redovi.length} agenata · ${ukupno.toLocaleString('sr-RS')} tokena · ${fmtDuration(ms)} rada` : 'Učitavam…'}>
+      {redovi.length ? (
+        <ul className="act-list">
+          {[...redovi].reverse().map((r, i) => (
+            <li key={i} className={r.ok ? '' : 'fail'}>
+              <i>{r.ok ? '✓' : '✕'}</i>
+              <div>
+                <span><b>{r.ime}</b>{r.odeljenje ? ` · ${r.odeljenje}` : ''} · {r.zadatak}</span>
+                <code>{modelName(r.model)} · {r.tokeni.toLocaleString('sr-RS')} tokena · {r.alati} alata · {fmtDuration(r.ms)}</code>
+              </div>
+              <time>{new Date(r.at).toLocaleTimeString('sr-RS', { hour: '2-digit', minute: '2-digit' })}</time>
+            </li>
+          ))}
+        </ul>
+      ) : <p className="muted">{d ? 'Danas još niko nije radio u ovoj kancelariji.' : '…'}</p>}
     </Shell>
   );
 }

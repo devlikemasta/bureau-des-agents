@@ -51,6 +51,8 @@ export function splitDept(description: string): { dept: string; task: string } {
 
 /** Kutak za agenta: sesija + naziv odeljenja → slot (dolazi iz podešavanja projekta). */
 export type SlotFor = (session: string, dept: string) => Role;
+/** Uloga sesije iz prijave: šef ili zamenik (+ ime za natpis). */
+export type UlogaOf = (session: string) => { uloga: string; ime: string };
 
 export class Observer {
   private queue = new Map<string, Pending[]>();          // sesija → Agent pozivi koji još nisu upareni
@@ -61,10 +63,25 @@ export class Observer {
   private names = new Set<string>();
   private emit: (ev: OfficeEvent) => void;
   private slotFor: SlotFor;
+  private ulogaOf: UlogaOf;
+  private zamenici = new Set<string>();   // id likova zamenika koji su već u kancelariji
 
-  constructor(emit: (ev: OfficeEvent) => void, slotFor: SlotFor) {
+  constructor(emit: (ev: OfficeEvent) => void, slotFor: SlotFor, ulogaOf: UlogaOf) {
     this.emit = emit;
     this.slotFor = slotFor;
+    this.ulogaOf = ulogaOf;
+  }
+
+  /** Ko radi u glavnoj niti sesije: šef, ili zamenik (lik za pomoćnim stolom, ulazi pri prvoj radnji). */
+  private who(session: string): string {
+    const u = this.ulogaOf(session);
+    if (u.uloga !== 'zamenik') return 'chef';
+    const id = `zamenik-${session.slice(0, 8)}`;
+    if (!this.zamenici.has(id)) {
+      this.zamenici.add(id);
+      this.emit({ k: 'hire', id, role: 'renfort', type: 'zamenik', name: 'Zamenik', task: u.ime || 'Druga sesija', prompt: '', dept: '' });
+    }
+    return id;
   }
 
   handle(m: HookMsg) {
@@ -92,10 +109,11 @@ export class Observer {
       this.queue.set(m.session_id, q);
       return;
     }
-    if (tool === 'TodoWrite' || tool.endsWith('update_plan')) { this.plan(m.session_id, tool, input); return; }
+    // tablu piše samo šef; zamenikov plan ostaje u njegovoj sesiji
+    if (tool === 'TodoWrite' || tool.endsWith('update_plan')) { if (this.ulogaOf(m.session_id).uloga !== 'zamenik') this.plan(m.session_id, tool, input); return; }
     if (tool.endsWith('wrap_up')) return;
     const { kind, label, detail } = describeAct(tool, input);
-    this.emit({ k: 'act', who: 'chef', id: m.tool_use_id ?? '', kind, tool, label, detail });
+    this.emit({ k: 'act', who: this.who(m.session_id), id: m.tool_use_id ?? '', kind, tool, label, detail });
   }
 
   private chefPost(m: HookMsg) {
@@ -119,7 +137,7 @@ export class Observer {
       return;
     }
     if (tool.endsWith('update_plan') || tool === 'TodoWrite' || tool.endsWith('wrap_up')) return;
-    this.emit({ k: 'act_done', who: 'chef', id: m.tool_use_id ?? '', ok: !m.tool_response?.is_error });
+    this.emit({ k: 'act_done', who: this.who(m.session_id), id: m.tool_use_id ?? '', ok: !m.tool_response?.is_error });
   }
 
   /** update_plan (desktop aplikacija) ili TodoWrite → tabla. */
@@ -224,6 +242,8 @@ export class Observer {
   }
 
   private sessionEnd(session: string) {
+    const z = `zamenik-${session.slice(0, 8)}`;
+    if (this.zamenici.delete(z)) this.emit({ k: 'leave', who: z, ok: true, tokens: 0, tools: 0, ms: 0 });
     for (const [id, p] of this.present) if (p.session === session) { this.keepAlive(p); void this.leave(id, false); }
     this.queue.delete(session);
     this.plans.delete(session);
@@ -236,7 +256,7 @@ export class Observer {
   clear() {
     for (const p of this.present.values()) this.keepAlive(p);
     for (const t of this.waiting.values()) clearTimeout(t);
-    this.present.clear(); this.waiting.clear(); this.queue.clear(); this.info.clear(); this.plans.clear(); this.names.clear();
+    this.present.clear(); this.waiting.clear(); this.queue.clear(); this.info.clear(); this.plans.clear(); this.names.clear(); this.zamenici.clear();
   }
 
   private pickName(role: Role) {
@@ -248,7 +268,10 @@ export class Observer {
 
 const status = (s: unknown): PlanItem['status'] => (s === 'completed' ? 'completed' : s === 'in_progress' ? 'in_progress' : 'pending');
 
-/** Tokeni agenta iz njegovog transcripta (ulaz + izlaz + upis u keš; čitanje iz keša se ne broji). */
+/**
+ * Tokeni agenta kao što ih broji Claude Code (subagent_tokens): veličina konteksta u poslednjem potezu
+ * (ulaz + keš + izlaz). Proveravano: 53k u Claude-u, a zbir svih poteza bi bio ~150k.
+ */
 async function tokensOf(file: string): Promise<number> {
   try {
     const raw = await readFile(file, 'utf8');
@@ -257,7 +280,7 @@ async function tokensOf(file: string): Promise<number> {
       if (!line.includes('"usage"')) continue;
       try {
         const u = JSON.parse(line)?.message?.usage;
-        if (u) n += (u.input_tokens ?? 0) + (u.output_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0);
+        if (u) n = (u.input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0) + (u.output_tokens ?? 0);
       } catch { /* prekinut red */ }
     }
     return n;
