@@ -3,7 +3,10 @@
 // ce fichier est lu tel quel par Node (sans compilation) et par Vite.
 
 /** Les métiers du bureau. « chef » = l'agent principal, celui à qui tu parles. */
-export type Role = 'chef' | 'recherche' | 'code' | 'design' | 'redaction' | 'analyse' | 'renfort';
+export type Role = 'chef' | 'recherche' | 'code' | 'design' | 'redaction' | 'analyse' | 'sesti' | 'renfort';
+
+/** Odeljenje projekta, smešteno u jedan od 6 kutaka kancelarije (slot). */
+export interface Odeljenje { slot: Role; naziv: string; ikona: string; boja: string }
 
 /** Ce que fait un agent à un instant : sert à l'animation, à l'icône et à la bulle. */
 export type ActKind = 'search' | 'web' | 'read' | 'write' | 'edit' | 'bash' | 'plan' | 'skill' | 'mcp' | 'other';
@@ -116,7 +119,8 @@ export type ClientMsg =
 
 // ── Serveur → navigateur ──
 export type ServerMsg =
-  | { t: 'hello'; claude: ClaudeInfo; dir: string; settings: Settings; quota: Quota | null; missions: MissionInfo[]; current: { mission: MissionInfo; log: Logged[] } | null; build?: string }
+  | { t: 'hello'; claude: ClaudeInfo; dir: string; settings: Settings; quota: Quota | null; missions: MissionInfo[]; current: { mission: MissionInfo; log: Logged[] } | null; build?: string; odeljenja?: Odeljenje[] }
+  | { t: 'odeljenja'; list: Odeljenje[] }
   | { t: 'mission'; mission: MissionInfo }
   | { t: 'ev'; missionId: string; at: number; ev: OfficeEvent }
   | { t: 'closed'; missionId: string }

@@ -141,13 +141,13 @@ function whiteboard(g: G) {
   hline(g, x + 4, y + 9, textWidth('LE PLAN'), P.orange);
 }
 
-const SIGN: Record<string, string> = { recherche: 'RECHERCHE', code: 'CODE', design: 'DESIGN', redaction: 'RÉDACTION', analyse: 'ANALYSE', chef: 'CHEF' };
+const SIGN: Record<string, string> = { chef: 'ŠEF' };
 
 /** Les écriteaux posés au coin de chaque tapis, avec le nombre d'agents au travail dans le coin. */
 export function signs(g: G, busy: (role: string) => number) {
   for (const z of ZONES) {
     const n = busy(z.role);
-    const label = (SIGN[z.role] ?? z.label.toUpperCase()) + (n > 0 && z.role !== 'chef' ? ` ${n}` : '');
+    const label = (SIGN[z.role] ?? ROLES[z.role].label.toUpperCase()) + (n > 0 && z.role !== 'chef' ? ` ${n}` : '');
     const color = ROLES[z.role].color;
     const w = textWidth(label) + 6;
     const x = z.x * T + 4, y = z.role === 'chef' ? (z.y + z.h) * T - 12 : z.y * T + 3;

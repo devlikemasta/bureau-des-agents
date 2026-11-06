@@ -1,6 +1,6 @@
 // Les métiers du bureau, et la traduction en français de ce que fait vraiment chaque agent :
 // chaque outil de Claude Code devient une action (une icône, une animation, une bulle).
-import type { ActKind, MissionStats, OfficeEvent, Role } from './protocol.ts';
+import type { ActKind, MissionStats, Odeljenje, OfficeEvent, Role } from './protocol.ts';
 
 export interface RoleInfo {
   /** le nom du métier, tel qu'il s'affiche dans le bureau */
@@ -19,8 +19,25 @@ export const ROLES: Record<Role, RoleInfo> = {
   design: { label: 'Design', icon: '🎨', color: '#FF6FA8', type: 'designer', what: 'Pages web soignées, maquettes, visuels, mise en forme.' },
   redaction: { label: 'Rédaction', icon: '✍️', color: '#A98BFF', type: 'redacteur', what: 'Posts, e-mails, articles, scripts vidéo, rapports.' },
   analyse: { label: 'Analyse', icon: '📊', color: '#FFC93D', type: 'analyste', what: 'Chiffres, tableaux, fichiers, comparatifs, calculs.' },
-  renfort: { label: 'Renfort', icon: '🤖', color: '#9AA3B5', type: '', what: 'Un coup de main sur une tâche à part.' },
+  sesti: { label: 'Slobodno', icon: '📦', color: '#5A5F6E', type: '', what: 'Slobodan kutak.' },
+  renfort: { label: 'Pomoćni sto', icon: '🤖', color: '#9AA3B5', type: '', what: 'Agent bez odeljenja.' },
 };
+
+/** Redosled kojim se odeljenja projekta raspoređuju po kutcima (prvo najveći i najvidljiviji). */
+export const SLOTS: Role[] = ['recherche', 'code', 'redaction', 'sesti', 'design', 'analyse'];
+const PRAZNO = '#5A5F6E';
+
+/** Odeljenja projekta postaju natpisi, ikone i boje kutaka (menja ROLES na licu mesta). */
+export function applyOdeljenja(list: Odeljenje[]) {
+  ROLES.chef.label = 'Šef';
+  for (const slot of SLOTS) {
+    const o = list.find((x) => x.slot === slot);
+    ROLES[slot].label = o ? o.naziv : 'Slobodno';
+    ROLES[slot].icon = o ? o.ikona : '📦';
+    ROLES[slot].color = o ? o.boja : PRAZNO;
+    ROLES[slot].what = o ? `Odeljenje ${o.naziv}.` : 'Slobodan kutak.';
+  }
+}
 
 /** Les outils Claude Code de chaque métier (le chef a tous ceux de la séance). */
 export const ROLE_TOOLS: Record<Role, string[]> = {
@@ -30,6 +47,7 @@ export const ROLE_TOOLS: Record<Role, string[]> = {
   design: ['Read', 'Write', 'Edit', 'Glob', 'Grep', 'WebFetch'],
   redaction: ['Read', 'Write', 'Edit', 'Glob', 'Grep'],
   analyse: ['Read', 'Write', 'Edit', 'Glob', 'Grep', 'Bash'],
+  sesti: [],
   renfort: [],
 };
 
@@ -48,13 +66,14 @@ export function roleOfType(type: string): Role {
 
 /** Les prénoms des robots, par métier (jamais deux fois le même dans une mission). */
 export const NAMES: Record<Role, string[]> = {
-  chef: ['Max'],
-  recherche: ['Iris', 'Hugo', 'Léa', 'Malo', 'Zoé', 'Noé', 'Inès', 'Tom', 'Jade', 'Sacha', 'Lou', 'Nils'],
-  code: ['Ada', 'Linus', 'Grace', 'Alan', 'Margaret', 'Dennis'],
-  design: ['Frida', 'Coco', 'Henri', 'Sonia', 'Saul'],
-  redaction: ['Colette', 'Victor', 'Simone', 'Jules', 'George'],
-  analyse: ['Marie', 'Blaise', 'Émilie', 'Gaspard', 'Ada'],
-  renfort: ['Bob', 'Lulu', 'Gaston', 'Nina', 'Momo', 'Kiki'],
+  chef: ['Šef'],
+  recherche: ['Marko', 'Ana', 'Luka', 'Jelena', 'Nikola', 'Mila', 'Stefan', 'Ivana'],
+  code: ['Petar', 'Sara', 'Vuk', 'Teodora', 'Filip', 'Nina'],
+  design: ['Mina', 'Lazar', 'Dunja', 'Pavle', 'Lena'],
+  redaction: ['Jovan', 'Tamara', 'Uroš', 'Maja', 'Đorđe'],
+  analyse: ['Milica', 'Bojan', 'Katarina', 'Dušan', 'Vesna'],
+  sesti: ['Ognjen', 'Sofija', 'Relja', 'Hana', 'Andrej'],
+  renfort: ['Žika', 'Mika', 'Laza', 'Pera', 'Kosta', 'Bata'],
 };
 
 const base = (p: unknown) => (typeof p === 'string' ? p.split(/[\\/]/).filter(Boolean).pop() ?? p : '');

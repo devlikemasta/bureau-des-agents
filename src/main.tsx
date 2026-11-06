@@ -10,9 +10,10 @@ import { jukebox } from './audio/music.ts';
 import { party } from './ui/interact.ts';
 import { startTour } from './ui/tour.ts';
 import { perf } from './ui/Office.tsx';
-import { connect, playReplay } from './net/link.ts';
+import { applyStoredOdeljenja, connect, playReplay } from './net/link.ts';
 import { useOffice } from './state/store.ts';
 
+applyStoredOdeljenja();
 applySound(useOffice.getState().sound);
 // pour les tests et les captures : rejouer une mission depuis la console
 (window as unknown as { __bureau: unknown }).__bureau = { playReplay, useOffice, world, perf, camera, jukebox, party, startTour };

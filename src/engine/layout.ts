@@ -41,7 +41,8 @@ export interface Zone { role: Role; label: string; x: number; y: number; w: numb
 
 /** Les coins du bureau (le tapis au sol et l'étiquette). */
 export const ZONES: Zone[] = [
-  { role: 'recherche', label: 'Recherche', x: 1, y: 3, w: 6, h: 6 },
+  { role: 'recherche', label: 'Recherche', x: 1, y: 3, w: 6, h: 3 },
+  { role: 'sesti', label: 'Šesto', x: 1, y: 6, w: 6, h: 3 },
   { role: 'code', label: 'Atelier code', x: 15, y: 3, w: 6, h: 3 },
   { role: 'design', label: 'Studio design', x: 15, y: 6, w: 6, h: 3 },
   { role: 'redaction', label: 'Rédaction', x: 1, y: 10, w: 6, h: 3 },
@@ -60,7 +61,9 @@ function desk(role: Role, tx: number, ty: number) {
 }
 
 // Recherche : deux rangées de trois bureaux (c'est le coin le plus demandé, un chercheur par sujet)
-for (const ty of [5, 8]) for (const tx of [1, 3, 5]) desk('recherche', tx, ty);
+for (const tx of [1, 3, 5]) desk('recherche', tx, 5);
+// Šesti kutak (druga polovina nekadašnjeg coin recherche)
+for (const tx of [1, 3, 5]) desk('sesti', tx, 8);
 // Atelier code
 for (const tx of [15, 17, 19]) desk('code', tx, 5);
 // Studio design

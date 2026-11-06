@@ -11,7 +11,7 @@ export type Hit =
   | { kind: 'cat'; label: string }
   | { kind: 'object'; id: string; label: string; role?: Role };
 
-const ZONE_SIGN: Record<string, string> = { recherche: 'RECHERCHE', code: 'CODE', design: 'DESIGN', redaction: 'RÉDACTION', analyse: 'ANALYSE', chef: 'CHEF' };
+const ZONE_SIGN: Record<string, string> = { chef: 'ŠEF' };
 
 function furnitureLabel(id: string, kind: string, role?: Role): string {
   switch (kind) {
@@ -66,7 +66,7 @@ export function hitAt(world: World, x: number, y: number): Hit | null {
   for (const w of WINDOWS) if (inRect(x, y, { x: w.x - 3, y: w.y - 3, w: w.w + 6, h: w.h + 8 })) return { kind: 'object', id: 'window', label: 'La fenêtre (jour, soir ou nuit)' };
   if (inRect(x, y, DOOR)) return { kind: 'object', id: 'door', label: 'La porte : c’est par là qu’arrive l’équipe' };
   for (const z of ZONES) {
-    const w = textWidth(ZONE_SIGN[z.role] ?? z.label) + 10;
+    const w = textWidth(ZONE_SIGN[z.role] ?? ROLES[z.role].label) + 10;
     const sx = z.x * T + 4, sy = z.role === 'chef' ? (z.y + z.h) * T - 12 : z.y * T + 3;
     if (inRect(x, y, { x: sx, y: sy, w, h: 9 })) return { kind: 'object', id: `zone:${z.role}`, label: `Le coin ${ROLES[z.role].label} : qui y travaille, avec quels outils`, role: z.role };
   }

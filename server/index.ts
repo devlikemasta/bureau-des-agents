@@ -18,6 +18,8 @@ import type { ClientMsg, ServerMsg } from '../shared/protocol.ts';
 import { Bureau } from './bureau.ts';
 import { findClaude } from './claude.ts';
 import { Observer, type HookMsg } from './observer.ts';
+import { Projekti, type Projekat } from './projekti.ts';
+import { watch } from 'node:fs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = path.join(ROOT, 'dist');
@@ -74,14 +76,38 @@ function writeAktivno(pid: number) {
   writeFileSync(AKTIVNO + '.tmp', JSON.stringify(next, null, 1), { mode: 0o600 });
   renameSync(AKTIVNO + '.tmp', AKTIVNO);
 }
-const observer = new Observer((ev) => bureau.observe(ev));
+const projekti = new Projekti(path.join(KANC, 'projekti'));
+mkdirSync(projekti.dir, { recursive: true });
+/** projekat koji kancelarija trenutno prikazuje */
+let aktivan: Projekat | null = null;
+let aktivanSlug = '';
+
+/** Projekat sesije: iz prijave (slug), pa po folderu, pa ime foldera bez odeljenja. */
+function projekatOf(m: HookMsg): { slug: string; p: Projekat | null } {
+  const slug = readAktivno()?.sesije?.[m.session_id]?.projekat ?? '';
+  const p = (slug && projekti.load(slug)) || (m.cwd ? projekti.byCwd(m.cwd) : null);
+  return { slug: p?.slug || slug || (m.cwd ? path.basename(m.cwd) : 'kancelarija'), p };
+}
+
+function prikazi(slug: string, p: Projekat | null) {
+  const promena = slug !== aktivanSlug || JSON.stringify(p?.odeljenja) !== JSON.stringify(aktivan?.odeljenja);
+  aktivan = p; aktivanSlug = slug;
+  if (promena) broadcast({ t: 'odeljenja', list: Projekti.odeljenja(p) });
+}
+
+const observer = new Observer((ev) => bureau.observe(ev), (_session, dept) => Projekti.slotOf(aktivan, dept));
 
 function onHook(m: HookMsg) {
-  const ses = readAktivno()?.sesije?.[m.session_id];
-  const title = ses?.projekat || (m.cwd ? path.basename(m.cwd) : 'Kancelarija');
-  bureau.beginObserve(title, m.cwd ?? os.homedir());
+  const { slug, p } = projekatOf(m);
+  prikazi(slug, p);
+  bureau.beginObserve(p?.ime || slug, m.cwd ?? os.homedir());
   observer.handle(m);
 }
+
+// Claude doda odeljenje u fajl projekta → kancelarija se odmah presloži
+try {
+  watch(projekti.dir, () => { if (aktivanSlug) prikazi(aktivanSlug, projekti.load(aktivanSlug)); }).on('error', () => {});
+} catch { /* bez praćenja: promena se vidi na sledećem događaju */ }
 
 async function hookRoute(req: http.IncomingMessage, res: http.ServerResponse) {
   if (req.method !== 'POST' || req.headers['x-kancelarija-token'] !== TOKEN) { res.writeHead(403).end(); return; }
@@ -158,7 +184,7 @@ wss.on('connection', (ws) => {
   clients.add(ws);
   ws.on('close', () => clients.delete(ws));
   const send = (m: ServerMsg) => ws.readyState === ws.OPEN && ws.send(JSON.stringify(m));
-  send({ ...bureau.hello(), build: BUILD } as ServerMsg);
+  send({ ...bureau.hello(), build: BUILD, odeljenja: Projekti.odeljenja(aktivan) } as ServerMsg);
   ws.on('message', async (data) => {
     let m: ClientMsg;
     try { m = JSON.parse(String(data)); } catch { return; }

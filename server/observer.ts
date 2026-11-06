@@ -10,7 +10,7 @@
 //   PreToolUse(SubagentHandback)     → rezultat agenta
 //   SubagentStop(agent_id)           → može da stigne DVAPUT, zato izlazak ide sa zadrškom
 import { readFile } from 'node:fs/promises';
-import { cut, describeAct, NAMES, roleOfType } from '../shared/activity.ts';
+import { cut, describeAct, NAMES } from '../shared/activity.ts';
 import type { OfficeEvent, PlanItem, Role } from '../shared/protocol.ts';
 
 type Json = Record<string, any>;
@@ -43,21 +43,14 @@ interface Present {
 const LEAVE_DEBOUNCE_MS = 2500;
 /** Koliko čekamo PostToolUse(Agent) sa tačnim agentId pre nego što uparimo po redosledu. */
 const MATCH_WAIT_MS = 250;
-const ROTATION: Role[] = ['recherche', 'code', 'design', 'redaction', 'analyse'];
-
 /** "[Transkripcija] RMA čas 5" → { dept: "Transkripcija", task: "RMA čas 5" } */
 export function splitDept(description: string): { dept: string; task: string } {
   const m = description.match(/^\s*\[([^\]]{1,40})\]\s*(.*)$/);
   return m ? { dept: m[1].trim(), task: m[2].trim() || m[1].trim() } : { dept: '', task: description.trim() };
 }
 
-/** Faza 1: odeljenje se raspoređuje na jedan od 5 postojećih kutaka (faza 2 crta prava odeljenja). */
-function roleOf(dept: string, type: string): Role {
-  if (!dept) return roleOfType(type);
-  let h = 0;
-  for (const ch of dept.toLowerCase()) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return ROTATION[h % ROTATION.length];
-}
+/** Kutak za agenta: sesija + naziv odeljenja → slot (dolazi iz podešavanja projekta). */
+export type SlotFor = (session: string, dept: string) => Role;
 
 export class Observer {
   private queue = new Map<string, Pending[]>();          // sesija → Agent pozivi koji još nisu upareni
@@ -67,9 +60,11 @@ export class Observer {
   private plans = new Map<string, PlanItem[]>();         // sesija → poslednji plan
   private names = new Set<string>();
   private emit: (ev: OfficeEvent) => void;
+  private slotFor: SlotFor;
 
-  constructor(emit: (ev: OfficeEvent) => void) {
+  constructor(emit: (ev: OfficeEvent) => void, slotFor: SlotFor) {
     this.emit = emit;
+    this.slotFor = slotFor;
   }
 
   handle(m: HookMsg) {
@@ -170,7 +165,7 @@ export class Observer {
     if (this.present.has(id)) return;
     const inf = this.info.get(id) ?? { description: type || 'Agent', model: '', prompt: '', type };
     const { dept, task } = splitDept(inf.description);
-    const role = roleOf(dept, inf.type || type);
+    const role = this.slotFor(session, dept);
     this.present.set(id, { session, since: Date.now(), tools: 0, transcript: '', stopTimer: null });
     this.emit({
       k: 'hire', id, role, type: inf.type || type, name: this.pickName(role), task: cut(task || 'Zadatak', 48),
