@@ -1,6 +1,7 @@
 // La connexion au pont (le serveur local qui pilote Claude Code). Sans pont (site public, téléphone),
 // le bureau passe en démo : il rejoue une vraie mission enregistrée.
-import type { ClientMsg, Logged, MissionInfo, ServerMsg } from '../../shared/protocol.ts';
+import type { ClientMsg, Logged, MissionInfo, Odeljenje, ServerMsg } from '../../shared/protocol.ts';
+import { applyOdeljenja } from '../../shared/activity.ts';
 import { useOffice } from '../state/store.ts';
 
 let ws: WebSocket | null = null;
@@ -30,6 +31,8 @@ export function connect() {
     let m: ServerMsg;
     try { m = JSON.parse(String(e.data)); } catch { return; }
     if (m.t === 'replay') { playReplay(m.mission, m.log, 1); return; }
+    if (m.t === 'odeljenja') { syncOdeljenja(m.list); return; }
+    if (m.t === 'hello' && m.odeljenja) syncOdeljenja(m.odeljenja);
     if (m.t === 'hello' && m.build && m.build !== 'dev') {
       // le bureau a été mis à jour depuis l'ouverture de l'onglet : on recharge la page
       if (build && build !== m.build) { location.reload(); return; }
@@ -114,4 +117,26 @@ async function startDemo() {
     });
     playReplay(data.mission, data.log, 1, { loop: true });
   } catch { /* pas de démo disponible */ }
+}
+
+// ── Odeljenja projekta ──
+// Natpisi, boje i ikone kutaka zavise od projekta. Crtež kancelarije i likova se kešira, pa kad se
+// odeljenja promene, sačuvamo ih i osvežimo stranicu (dešava se retko: novi projekat ili novo odeljenje).
+const ODELJENJA_KEY = 'kancelarija-odeljenja';
+
+/** Pre prvog crtanja: primeni poslednja poznata odeljenja. */
+export function applyStoredOdeljenja() {
+  try {
+    const raw = sessionStorage.getItem(ODELJENJA_KEY);
+    applyOdeljenja(raw ? (JSON.parse(raw) as Odeljenje[]) : []);
+  } catch { applyOdeljenja([]); }
+}
+
+function syncOdeljenja(list: Odeljenje[]) {
+  const next = JSON.stringify(list);
+  let prev: string | null = null;
+  try { prev = sessionStorage.getItem(ODELJENJA_KEY); } catch { /* bez skladišta */ }
+  if ((prev ?? '[]') === next) return;
+  try { sessionStorage.setItem(ODELJENJA_KEY, next); } catch { applyOdeljenja(list); return; }
+  location.reload();
 }

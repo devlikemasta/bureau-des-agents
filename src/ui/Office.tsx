@@ -10,6 +10,7 @@ import { interact } from './interact.ts';
 import { H, W } from '../engine/layout.ts';
 import { sfx } from '../audio/sfx.ts';
 import { useOffice, type AskView } from '../state/store.ts';
+import { bus } from '../state/bus.ts';
 
 const ICON: Record<ActKind, string> = {
   search: '🔎', web: '🌐', read: '📖', write: '✍️', edit: '✏️', bash: '💻', plan: '📋', skill: '🎓', mcp: '🔌', other: '⚙️',
@@ -194,7 +195,7 @@ function LiveBadge() {
   const busy = useOffice((s) => s.busySince !== null);
   const replaying = useOffice((s) => s.replaying);
   if (!filming || !busy) return null;
-  return <div className="live-badge"><i />{replaying ? 'REDIFFUSION' : 'EN DIRECT'}</div>;
+  return <div className="live-badge"><i />{replaying ? 'REPRIZA' : 'UŽIVO'}</div>;
 }
 
 function subscribeRoster(cb: () => void) {
@@ -212,7 +213,7 @@ interface View {
 }
 
 /** Une bulle plus courte : sans guillemets, le sujet après deux-points. */
-const short = (label: string) => label.replace(/\s«\s?(.+?)\s?»/, ' : $1');
+const short = (label: string) => label.replace(/\s„\s?(.+?)\s?”/, ' : $1');
 
 function Bubbles() {
   const version = useSyncExternalStore(subscribeRoster, () => world.rosterVersion);
@@ -265,11 +266,18 @@ function Bubbles() {
       if (chef.typing) return { ...base, mode: 'full', text: lastSentence(chef.typing, 70) };
       if (chef.say && now - chef.sayAt < 6000) return { ...base, mode: 'full', text: firstSentence(chef.say, 70) };
       if (chef.act && now - chef.act.at < 5000) return { ...base, mode: 'full', text: short(chef.act.label), icon: ICON[chef.act.kind] };
-      if (busy && working > 0) return { ...base, mode: 'full', text: `J’attends l’équipe : ${order.length - working} rapport${order.length - working > 1 ? 's' : ''} sur ${order.length}`, icon: '⏳' };
+      if (busy && working > 0) return { ...base, mode: 'full', text: `Čekam tim: ${order.length - working} od ${order.length} izveštaja`, icon: '⏳' };
       if (busy) return { ...base, mode: 'full', text: '…' };
       return { ...base, mode: filming ? 'none' : 'tag' };
     }
     if (!a || !actor) return { ...base, mode: 'none' };
+    // režim posmatrača: za stolom uvek piše zadatak; po završetku „Gotovo”, a greška ostaje crvena
+    if (bus.posmatrac && actor.seated && !actor.moving) {
+      if (actor.failed) return { ...base, color: '#e5484d', mode: 'full', text: 'Greška · klikni me', icon: '✕' };
+      if (a.status === 'done') return { ...base, color: '#2fbf71', mode: 'full', text: 'Gotovo', icon: '✓' };
+      const act = a.act && now - a.act.at < 7000 ? a.act : null;
+      return { ...base, mode: 'full', text: short(a.task), icon: act ? ICON[act.kind] : '💼' };
+    }
     // en marche : juste son nom (avec sa feuille s'il apporte son rapport)
     if (actor.moving || !actor.seated) return { ...base, mode: 'tag', icon: actor.carrying ? '📄' : undefined };
     if (a.act && now - a.act.at < 7000) {
@@ -335,10 +343,10 @@ function AskBubble({ ask, name }: { ask: AskView; name: string }) {
       <span className="bubble-text">{short(ask.label)}</span>
       {ask.full ? (
         <span className="ask-actions">
-          <button className="yes" onClick={() => answer(true)}>Oui</button>
-          <button className="no" onClick={() => answer(false)}>Non</button>
+          <button className="yes" onClick={() => answer(true)}>Da</button>
+          <button className="no" onClick={() => answer(false)}>Ne</button>
         </span>
-      ) : <span className="ask-more">Détails en bas de l’écran ↓</span>}
+      ) : <span className="ask-more">Detalji na dnu ekrana ↓</span>}
     </div>
   );
 }

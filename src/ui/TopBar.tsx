@@ -27,7 +27,7 @@ function useTick(on: boolean) {
 
 const TOD_NEXT: Record<Tod, Tod> = { auto: 'day', day: 'evening', evening: 'night', night: 'auto' };
 const TOD_ICON: Record<Tod, string> = { auto: '🕒', day: '☀️', evening: '🌇', night: '🌙' };
-const TOD_LABEL: Record<Tod, string> = { auto: 'Heure de ton Mac', day: 'Jour', evening: 'Soir', night: 'Nuit' };
+const TOD_LABEL: Record<Tod, string> = { auto: 'Sat tvog Maca', day: 'Dan', evening: 'Veče', night: 'Noć' };
 
 export function TopBar() {
   const mission = useOffice((s) => s.mission);
@@ -64,8 +64,8 @@ export function TopBar() {
       <div className="brand">
         <Logo />
         <div>
-          <b>Le Bureau des agents</b>
-          <span>{connection === 'demo' ? 'Démo · VibesMoney' : 'par VibesMoney'}</span>
+          <b>Kancelarija agenata</b>
+          <span>{connection === 'demo' ? 'Demo · VibesMoney' : 'od VibesMoney'}</span>
         </div>
       </div>
 
@@ -76,7 +76,7 @@ export function TopBar() {
             <span className="mission-title" title={mission.prompt}>{mission.title}</span>
             <span className="timer">{fmtClock(elapsed)}</span>
           </>
-        ) : <span className="muted">Aucune mission en cours</span>}
+        ) : <span className="muted">Nema aktivnog zadatka</span>}
         {mission && plan.length > 0 && (
           <span className="plan-step" title={current?.text ?? ''}>📋 {done}/{plan.length}{current && busySince ? ` · ${current.text}` : ''}</span>
         )}
@@ -84,37 +84,37 @@ export function TopBar() {
 
       {mission && (
         <div className="stats">
-          <span title="Agents appelés">🤖 {stats.agents}</span>
-          <span title="Recherches sur internet">🔎 {stats.searches}</span>
-          <span title="Pages web lues">🌐 {stats.pages}</span>
-          <span title="Fichiers rendus">📄 {files}</span>
+          <span title="Pozvani agenti">🤖 {stats.agents}</span>
+          <span title="Pretrage na internetu">🔎 {stats.searches}</span>
+          <span title="Pročitane veb stranice">🌐 {stats.pages}</span>
+          <span title="Predati fajlovi">📄 {files}</span>
         </div>
       )}
 
       {replaying && (
         <div className="replay-bar">
-          <span>Rediffusion</span>
+          <span>Repriza</span>
           {[1, 2, 4].map((x) => <button key={x} onClick={() => replaySpeed(x)}>×{x}</button>)}
-          {connection !== 'demo' && <button onClick={() => { sfx('click'); stopReplay(); }}>Quitter</button>}
+          {connection !== 'demo' && <button onClick={() => { sfx('click'); stopReplay(); }}>Izađi</button>}
         </div>
       )}
 
       <div className="tools">
         {quota && (
-          <span className="energy" title={`Ton abonnement sur 5 heures : ${Math.round(quota.fiveHour * 100)} % utilisés`}>
-            <span className="energy-label">Énergie</span>
+          <span className="energy" title={`Tvoja pretplata na 5 sati: iskorišćeno ${Math.round(quota.fiveHour * 100)} %`}>
+            <span className="energy-label">Energija</span>
             <span className="energy-bar"><i style={{ width: `${Math.max(3, 100 - quota.fiveHour * 100)}%` }} /></span>
           </span>
         )}
-        <button className="icon-btn" title="Visite guidée : Max présente son bureau (T)" onClick={() => void startTour()}>🎤</button>
-        <button className="icon-btn" title="Toute l’équipe : les métiers, leurs outils, l’historique" onClick={() => { sfx('open'); useOffice.setState({ modal: { kind: 'team' } }); }}>👥</button>
-        <button className={`icon-btn ${musicOn ? 'on' : ''}`} title="Le jukebox (J)" onClick={() => { sfx('open'); useOffice.setState({ modal: { kind: 'jukebox' } }); }}>{musicOn ? '🎶' : '🎵'}</button>
-        <button className="icon-btn" title="Missions précédentes (H)" onClick={() => { sfx('open'); useOffice.setState({ historyOpen: true }); }}>🗂️</button>
-        <button className="icon-btn" title={`L’heure du bureau : ${TOD_LABEL[tod]} (N)`} onClick={() => { sfx('click'); const n = TOD_NEXT[tod]; useOffice.setState({ tod: n }); savePref('tod', n); }}>{TOD_ICON[tod]}</button>
-        <button className="icon-btn" title={sound ? 'Couper le son (M)' : 'Remettre le son (M)'} onClick={() => toggle('sound')}>{sound ? '🔊' : '🔇'}</button>
-        <button className={`icon-btn ${vertical ? 'on' : ''}`} title="Cadre vertical 9:16, pour filmer un reel (V)" onClick={() => toggle('vertical')}>📱</button>
-        <button className={`icon-btn ${filming ? 'on' : ''}`} title="Mode tournage : juste le bureau et Max (F)" onClick={() => toggle('filming')}>🎬</button>
-        <button className="icon-btn" title="Réglages" onClick={() => { sfx('open'); useOffice.setState({ settingsOpen: true }); }}>⚙️</button>
+        <button className="icon-btn" title="Obilazak: Max predstavlja svoju kancelariju (T)" onClick={() => void startTour()}>🎤</button>
+        <button className="icon-btn" title="Ceo tim: poslovi, alati, istorija" onClick={() => { sfx('open'); useOffice.setState({ modal: { kind: 'team' } }); }}>👥</button>
+        <button className={`icon-btn ${musicOn ? 'on' : ''}`} title="Džuboks (J)" onClick={() => { sfx('open'); useOffice.setState({ modal: { kind: 'jukebox' } }); }}>{musicOn ? '🎶' : '🎵'}</button>
+        <button className="icon-btn" title="Prethodni zadaci (H)" onClick={() => { sfx('open'); useOffice.setState({ historyOpen: true }); }}>🗂️</button>
+        <button className="icon-btn" title={`Doba dana u kancelariji: ${TOD_LABEL[tod]} (N)`} onClick={() => { sfx('click'); const n = TOD_NEXT[tod]; useOffice.setState({ tod: n }); savePref('tod', n); }}>{TOD_ICON[tod]}</button>
+        <button className="icon-btn" title={sound ? 'Isključi zvuk (M)' : 'Uključi zvuk (M)'} onClick={() => toggle('sound')}>{sound ? '🔊' : '🔇'}</button>
+        <button className={`icon-btn ${vertical ? 'on' : ''}`} title="Vertikalni kadar 9:16, za snimanje rilsa (V)" onClick={() => toggle('vertical')}>📱</button>
+        <button className={`icon-btn ${filming ? 'on' : ''}`} title="Režim snimanja: samo kancelarija i Max (F)" onClick={() => toggle('filming')}>🎬</button>
+        <button className="icon-btn" title="Podešavanja" onClick={() => { sfx('open'); useOffice.setState({ settingsOpen: true }); }}>⚙️</button>
       </div>
     </header>
   );

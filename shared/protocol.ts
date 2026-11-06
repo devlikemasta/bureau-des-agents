@@ -3,12 +3,25 @@
 // ce fichier est lu tel quel par Node (sans compilation) et par Vite.
 
 /** Les métiers du bureau. « chef » = l'agent principal, celui à qui tu parles. */
-export type Role = 'chef' | 'recherche' | 'code' | 'design' | 'redaction' | 'analyse' | 'renfort';
+export type Role = 'chef' | 'recherche' | 'code' | 'design' | 'redaction' | 'analyse' | 'sesti' | 'renfort';
+
+/** Odeljenje projekta, smešteno u jedan od 6 kutaka kancelarije (slot). */
+/** Duga radnja (transkripcija, render…) i dokle je stigla: prikaz na šefovom stolu. */
+export interface Radnja {
+  id: string; naziv: string; ko: string; izvor: 'auto' | 'rucno';
+  start: number; azurirano: number; stanje: 'radi' | 'gotovo' | 'greska';
+  procenat?: number; poruka: string; tiho?: boolean;
+}
+
+/** Red dnevnog loga: jedan agent koji je radio danas. */
+export interface DnevnikRed { at: number; ime: string; odeljenje: string; zadatak: string; model: string; tokeni: number; alati: number; ms: number; ok: boolean }
+
+export interface Odeljenje { slot: Role; naziv: string; ikona: string; boja: string }
 
 /** Ce que fait un agent à un instant : sert à l'animation, à l'icône et à la bulle. */
 export type ActKind = 'search' | 'web' | 'read' | 'write' | 'edit' | 'bash' | 'plan' | 'skill' | 'mcp' | 'other';
 
-export interface PlanItem { text: string; status: 'pending' | 'in_progress' | 'completed' }
+export interface PlanItem { text: string; status: 'pending' | 'in_progress' | 'completed'; id?: string; ko?: 'claude' | 'stefan' }
 
 /** Un fichier produit par l'équipe, dans le dossier de la mission. */
 export interface FileInfo { path: string; name: string; ext: string; size: number; at: number; by: string }
@@ -34,6 +47,8 @@ export interface MissionInfo {
   files: FileInfo[];
   /** le dernier message du chef, une fois la mission rendue */
   final?: string;
+  /** režim posmatrača: agenti dolaze iz naših Claude Code sesija (hookovi), ne iz Maxa */
+  posmatrac?: boolean;
 }
 
 /**
@@ -47,7 +62,7 @@ export type OfficeEvent =
   | { k: 'typing'; who: string; text: string }
   | { k: 'say'; who: string; text: string }
   | { k: 'plan'; items: PlanItem[] }
-  | { k: 'hire'; id: string; role: Role; type: string; name: string; task: string; prompt: string }
+  | { k: 'hire'; id: string; role: Role; type: string; name: string; task: string; prompt: string; model?: string; dept?: string }
   | { k: 'act'; who: string; id: string; kind: ActKind; tool: string; label: string; detail: string }
   | { k: 'act_done'; who: string; id: string; ok: boolean }
   /** le rapport qu'un agent rend au chef */
@@ -110,11 +125,19 @@ export type ClientMsg =
   | { t: 'versions'; missionId: string; file: string }
   | { t: 'team_history' }
   | { t: 'replay'; missionId: string }
-  | { t: 'settings'; settings: Partial<Settings> };
+  | { t: 'settings'; settings: Partial<Settings> }
+  | { t: 'tabla_dodaj'; tekst: string }
+  | { t: 'tabla_precrtaj'; id: string }
+  | { t: 'tabla_obrisi'; id: string }
+  | { t: 'dnevnik' }
+  | { t: 'napredak' };
 
 // ── Serveur → navigateur ──
 export type ServerMsg =
-  | { t: 'hello'; claude: ClaudeInfo; dir: string; settings: Settings; quota: Quota | null; missions: MissionInfo[]; current: { mission: MissionInfo; log: Logged[] } | null; build?: string }
+  | { t: 'hello'; claude: ClaudeInfo; dir: string; settings: Settings; quota: Quota | null; missions: MissionInfo[]; current: { mission: MissionInfo; log: Logged[] } | null; build?: string; odeljenja?: Odeljenje[] }
+  | { t: 'odeljenja'; list: Odeljenje[] }
+  | { t: 'dnevnik'; projekat: string; redovi: DnevnikRed[] }
+  | { t: 'napredak'; radnje: Radnja[] }
   | { t: 'mission'; mission: MissionInfo }
   | { t: 'ev'; missionId: string; at: number; ev: OfficeEvent }
   | { t: 'closed'; missionId: string }

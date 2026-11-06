@@ -45,10 +45,15 @@ const GLYPHS: Record<string, string[]> = {
   '!': ['#', '#', '#', '.', '#'],
 };
 
+/** Slova bez svoje sličice (Č, Š, Ž, Đ…) crtaju se kao osnovno slovo. */
+function glyphOf(ch: string): string[] {
+  return GLYPHS[ch] ?? GLYPHS[ch === 'Đ' ? 'D' : ch.normalize('NFD')[0]] ?? GLYPHS[' '];
+}
+
 /** Largeur d'un texte, en pixels. */
 export function textWidth(text: string) {
   let w = 0;
-  for (const ch of text.toUpperCase()) w += (GLYPHS[ch]?.[0].length ?? 3) + 1;
+  for (const ch of text.toUpperCase()) w += glyphOf(ch)[0].length + 1;
   return Math.max(0, w - 1);
 }
 
@@ -57,7 +62,7 @@ export function pixelText(g: G, text: string, x: number, y: number, color: strin
   g.fillStyle = color;
   let cx = Math.round(x);
   for (const ch of text.toUpperCase()) {
-    const glyph = GLYPHS[ch] ?? GLYPHS[' '];
+    const glyph = glyphOf(ch);
     for (let r = 0; r < glyph.length; r++) {
       const row = glyph[r];
       for (let c = 0; c < row.length; c++) if (row[c] === '#') g.fillRect(cx + c, Math.round(y) + r, 1, 1);

@@ -385,7 +385,8 @@ export class Renderer {
       if (!done) { g.fillStyle = '#f4f5f9'; g.fillRect(x0 + 1, y + 1, 1, 1); }
       // la ligne écrite à la main
       const len = Math.max(18, Math.min(78, Math.round(it.text.length * 1.5)));
-      const ink = done ? '#b4b7c6' : doing ? '#3a2f44' : '#2b2836';
+      // Stefanove stavke plavim flomasterom, Claudeove crnim
+      const ink = done ? '#b4b7c6' : it.ko === 'stefan' ? '#2f6fd6' : doing ? '#3a2f44' : '#2b2836';
       g.fillStyle = ink;
       for (let k = 0; k < len; k++) {
         if ((k * 7 + i * 3) % 11 === 0) continue; // des petits blancs entre les « mots »

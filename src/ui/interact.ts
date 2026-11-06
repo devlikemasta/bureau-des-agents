@@ -9,9 +9,9 @@ import { savePref, useOffice, type Tod } from '../state/store.ts';
 const TOD_NEXT: Record<Tod, Tod> = { auto: 'day', day: 'evening', evening: 'night', night: 'auto' };
 
 const QUOTES = [
-  'Objectif du trimestre : zéro tâche répétitive.',
-  'Règle n°1 du bureau : on délègue tout ce qui se délègue.',
-  'Ici, personne ne compte ses heures. Personne n’en a besoin.',
+  'Cilj kvartala: nula ponavljajućih zadataka.',
+  'Pravilo broj 1 u kancelariji: delegira se sve što može da se delegira.',
+  'Ovde niko ne broji sate. Niko i ne mora.',
 ];
 
 let jukeClicks: number[] = [];
@@ -59,12 +59,18 @@ export function interact(hit: Hit) {
     return;
   }
   switch (id) {
-    case 'board': case 'chefDesk': sfx('open'); useOffice.setState({ modal: { kind: 'board' } }); return;
+    case 'board': sfx('open'); useOffice.setState({ modal: { kind: 'board' } }); return;
+    // posmatrač: šefov sto = duge radnje i dokle su stigle
+    case 'chefDesk': sfx('open'); useOffice.setState({ modal: { kind: st.mission?.posmatrac ? 'napredak' : 'board' } }); return;
     case 'chefChair': sfx('click'); useOffice.setState({ draft: ' ' }); return;
     case 'clock': sfx('open'); useOffice.setState({ modal: { kind: 'clock' } }); return;
     case 'rack': sfx('open'); useOffice.setState({ modal: { kind: 'machine' } }); return;
     case 'printer': sfx('open'); useOffice.setState({ modal: { kind: 'files' } }); return;
-    case 'shelf': sfx('open'); useOffice.setState({ historyOpen: true }); return;
+    case 'shelf':
+      sfx('open');
+      if (st.mission?.posmatrac) { st.send({ t: 'dnevnik' }); useOffice.setState({ modal: { kind: 'dnevnik' } }); }
+      else useOffice.setState({ historyOpen: true });
+      return;
     case 'door': sfx('open'); useOffice.setState({ modal: { kind: 'team' } }); return;
     case 'neon': world.neonNext(); sfx('check'); return;
     case 'window': { const n = TOD_NEXT[st.tod]; useOffice.setState({ tod: n }); savePref('tod', n); sfx('click'); return; }

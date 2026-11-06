@@ -3,8 +3,7 @@
 import { create } from 'zustand';
 import { countStats, emptyStats } from '../../shared/activity.ts';
 import type {
-  ActKind, ClaudeInfo, ClientMsg, FileInfo, MissionInfo, MissionStats, OfficeEvent, PlanItem, Quota, Role, ServerMsg, Settings, TeamEntry, VersionInfo,
-} from '../../shared/protocol.ts';
+  ActKind, ClaudeInfo, ClientMsg, FileInfo, MissionInfo, MissionStats, OfficeEvent, PlanItem, Quota, Role, ServerMsg, Settings, TeamEntry, VersionInfo, DnevnikRed, Radnja } from '../../shared/protocol.ts';
 import { sfx } from '../audio/sfx.ts';
 import { say } from '../audio/voice.ts';
 import { bus } from './bus.ts';
@@ -27,6 +26,8 @@ export interface AgentView {
   leftAt?: number;
   tokens: number;
   tools: number;
+  model?: string;
+  dept?: string;
 }
 
 export interface ChefView {
@@ -55,6 +56,8 @@ export type Modal =
   | { kind: 'jukebox' }
   | { kind: 'team'; role?: Role }
   | { kind: 'files' }
+  | { kind: 'dnevnik' }
+  | { kind: 'napredak' }
   | { kind: 'preview'; missionId: string; file: string };
 
 interface S {
@@ -86,6 +89,10 @@ interface S {
   /** les versions de chaque rendu (clé : mission|fichier) */
   versions: Record<string, VersionInfo[]>;
   teamHistory: TeamEntry[] | null;
+  /** dnevni log projekta (režim posmatrača) */
+  dnevnik: { projekat: string; redovi: DnevnikRed[] } | null;
+  /** duge radnje (šefov sto, režim posmatrača) */
+  radnje: Radnja[] | null;
   /** chaque version du plan, dans l'ordre (le tableau garde l'historique) */
   planHistory: { at: number; items: PlanItem[] }[];
   music: { playing: boolean; index: number; volume: number };
@@ -150,6 +157,8 @@ export const useOffice = create<S>((set, get) => ({
   modal: null,
   versions: {},
   teamHistory: null,
+  dnevnik: null,
+  radnje: null,
   planHistory: [],
   music: { playing: false, index: 0, volume: 0.55 },
   voiceOn: pref('voice', true),
@@ -177,6 +186,7 @@ export const useOffice = create<S>((set, get) => ({
       mission: m, chef: emptyChef(), agents: {}, order: [], plan: [], files: [], asks: {}, stats: emptyStats(),
       feed: [], final: null, busySince: null, workMs: 0, showFinal: false, planHistory: [],
     });
+    bus.posmatrac = !!m?.posmatrac;
     bus.reset();
   },
 
@@ -217,6 +227,12 @@ export const useOffice = create<S>((set, get) => ({
       case 'team_history':
         set({ teamHistory: m.entries });
         break;
+      case 'dnevnik':
+        set({ dnevnik: { projekat: m.projekat, redovi: m.redovi } });
+        break;
+      case 'napredak':
+        set({ radnje: m.radnje });
+        break;
       case 'quota':
         set({ quota: m.quota });
         break;
@@ -244,7 +260,7 @@ export const useOffice = create<S>((set, get) => ({
         const first = s.feed.length === 0;
         set({
           chef: { ...s.chef, say: '', typing: '', thinkingAt: at }, final: null, showFinal: false,
-          busySince: at, feed: feed('toi', ev.text, 'user'),
+          busySince: at, feed: feed('ti', ev.text, 'user'),
         });
         if (live && !first) sfx('send');
         if (live) void say('parti');
@@ -271,12 +287,12 @@ export const useOffice = create<S>((set, get) => ({
       case 'hire': {
         const a: AgentView = {
           id: ev.id, role: ev.role, name: ev.name, task: ev.task, prompt: ev.prompt, status: 'working', act: null, acts: [],
-          say: '', sayAt: 0, report: '', hiredAt: at, tokens: 0, tools: 0,
+          say: '', sayAt: 0, report: '', hiredAt: at, tokens: 0, tools: 0, model: ev.model, dept: ev.dept,
         };
         const stats = { ...s.stats };
         countStats(stats, ev);
         const firstOfRound = !s.order.some((id) => s.agents[id]?.status === 'working' || s.agents[id]?.status === 'reporting');
-        set({ agents: { ...s.agents, [ev.id]: a }, order: [...s.order, ev.id], stats, feed: feed('Max', `appelle ${ev.name} : ${ev.task}`, 'hire') });
+        set({ agents: { ...s.agents, [ev.id]: a }, order: [...s.order, ev.id], stats, feed: feed('Max', `zove ${ev.name}: ${ev.task}`, 'hire') });
         if (live) sfx('spawn');
         if (live && firstOfRound) void say('equipe');
         break;
@@ -303,7 +319,7 @@ export const useOffice = create<S>((set, get) => ({
       case 'report': {
         const a = s.agents[ev.who];
         if (!a) break;
-        set({ agents: { ...s.agents, [ev.who]: { ...a, report: ev.text, status: 'reporting' } }, feed: feed(a.name, 'rend son rapport à Max', 'report') });
+        set({ agents: { ...s.agents, [ev.who]: { ...a, report: ev.text, status: 'reporting' } }, feed: feed(a.name, 'predaje izveštaj Maxu', 'report') });
         if (live) sfx('paper');
         break;
       }
@@ -315,7 +331,7 @@ export const useOffice = create<S>((set, get) => ({
       }
       case 'file': {
         const files = [...s.files.filter((f) => f.path !== ev.file.path), ev.file].sort((a, b) => a.at - b.at);
-        set({ files, feed: ev.isNew ? feed(agentName(ev.file.by), `a rangé ${ev.file.name}`, 'file') : get().feed });
+        set({ files, feed: ev.isNew ? feed(agentName(ev.file.by), `odložio fajl ${ev.file.name}`, 'file') : get().feed });
         if (live && ev.isNew) sfx('print');
         break;
       }
@@ -335,7 +351,7 @@ export const useOffice = create<S>((set, get) => ({
         const workMs = s.workMs + (s.busySince ? Math.max(0, at - s.busySince) : 0);
         set({
           final: { ok: ev.ok, text: ev.text, ms: ev.ms, stopped: ev.stopped, at }, busySince: null, workMs, asks: {},
-          showFinal: false, feed: feed('Max', ev.ok ? 'Mission accomplie !' : ev.stopped ? 'Mission arrêtée.' : 'La mission s’est mal terminée.', 'end'),
+          showFinal: false, feed: feed('Max', ev.ok ? 'Zadatak je završen!' : ev.stopped ? 'Zadatak je zaustavljen.' : 'Zadatak se loše završio.', 'end'),
         });
         if (live) sfx(ev.ok ? 'done' : 'error');
         if (live && ev.ok) setTimeout(() => { void say('accomplie', true); }, 900);

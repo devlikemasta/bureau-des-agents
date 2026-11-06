@@ -1,6 +1,6 @@
 // Les métiers du bureau, et la traduction en français de ce que fait vraiment chaque agent :
 // chaque outil de Claude Code devient une action (une icône, une animation, une bulle).
-import type { ActKind, MissionStats, OfficeEvent, Role } from './protocol.ts';
+import type { ActKind, MissionStats, Odeljenje, OfficeEvent, Role } from './protocol.ts';
 
 export interface RoleInfo {
   /** le nom du métier, tel qu'il s'affiche dans le bureau */
@@ -13,14 +13,31 @@ export interface RoleInfo {
 }
 
 export const ROLES: Record<Role, RoleInfo> = {
-  chef: { label: 'Chef de projet', icon: '⭐', color: '#FF8A3D', type: '', what: 'Il reçoit ta demande, fait le plan, répartit le travail et assemble le rendu.' },
-  recherche: { label: 'Recherche', icon: '🔎', color: '#4FB3FF', type: 'chercheur', what: 'Cherche sur internet : concurrents, prix, avis, actualités, sources.' },
-  code: { label: 'Code', icon: '💻', color: '#3DDC97', type: 'developpeur', what: 'Code, sites, scripts, automatisations : ce qui se lance et se teste.' },
-  design: { label: 'Design', icon: '🎨', color: '#FF6FA8', type: 'designer', what: 'Pages web soignées, maquettes, visuels, mise en forme.' },
-  redaction: { label: 'Rédaction', icon: '✍️', color: '#A98BFF', type: 'redacteur', what: 'Posts, e-mails, articles, scripts vidéo, rapports.' },
-  analyse: { label: 'Analyse', icon: '📊', color: '#FFC93D', type: 'analyste', what: 'Chiffres, tableaux, fichiers, comparatifs, calculs.' },
-  renfort: { label: 'Renfort', icon: '🤖', color: '#9AA3B5', type: '', what: 'Un coup de main sur une tâche à part.' },
+  chef: { label: 'Chef de projet', icon: '⭐', color: '#FF8A3D', type: '', what: 'Prima tvoj zahtev, pravi plan, raspoređuje posao i sklapa rezultat.' },
+  recherche: { label: 'Recherche', icon: '🔎', color: '#4FB3FF', type: 'chercheur', what: 'Traži po internetu: konkurenciju, cene, mišljenja, vesti, izvore.' },
+  code: { label: 'Code', icon: '💻', color: '#3DDC97', type: 'developpeur', what: 'Kod, sajtovi, skripte, automatizacije: sve što se pokreće i testira.' },
+  design: { label: 'Design', icon: '🎨', color: '#FF6FA8', type: 'designer', what: 'Uredne veb stranice, makete, vizuali, oblikovanje.' },
+  redaction: { label: 'Rédaction', icon: '✍️', color: '#A98BFF', type: 'redacteur', what: 'Objave, mejlovi, članci, skripte za video, izveštaji.' },
+  analyse: { label: 'Analyse', icon: '📊', color: '#FFC93D', type: 'analyste', what: 'Brojevi, tabele, fajlovi, poređenja, računanje.' },
+  sesti: { label: 'Slobodno', icon: '📦', color: '#5A5F6E', type: '', what: 'Slobodan kutak.' },
+  renfort: { label: 'Pomoćni sto', icon: '🤖', color: '#9AA3B5', type: '', what: 'Agent bez odeljenja.' },
 };
+
+/** Redosled kojim se odeljenja projekta raspoređuju po kutcima (prvo najveći i najvidljiviji). */
+export const SLOTS: Role[] = ['recherche', 'code', 'redaction', 'sesti', 'design', 'analyse'];
+const PRAZNO = '#5A5F6E';
+
+/** Odeljenja projekta postaju natpisi, ikone i boje kutaka (menja ROLES na licu mesta). */
+export function applyOdeljenja(list: Odeljenje[]) {
+  ROLES.chef.label = 'Šef';
+  for (const slot of SLOTS) {
+    const o = list.find((x) => x.slot === slot);
+    ROLES[slot].label = o ? o.naziv : 'Slobodno';
+    ROLES[slot].icon = o ? o.ikona : '📦';
+    ROLES[slot].color = o ? o.boja : PRAZNO;
+    ROLES[slot].what = o ? `Odeljenje ${o.naziv}.` : 'Slobodan kutak.';
+  }
+}
 
 /** Les outils Claude Code de chaque métier (le chef a tous ceux de la séance). */
 export const ROLE_TOOLS: Record<Role, string[]> = {
@@ -30,14 +47,15 @@ export const ROLE_TOOLS: Record<Role, string[]> = {
   design: ['Read', 'Write', 'Edit', 'Glob', 'Grep', 'WebFetch'],
   redaction: ['Read', 'Write', 'Edit', 'Glob', 'Grep'],
   analyse: ['Read', 'Write', 'Edit', 'Glob', 'Grep', 'Bash'],
+  sesti: [],
   renfort: [],
 };
 
 /** Ce que veut dire chaque outil, en français (pour la fiche des métiers). */
 export const TOOL_INFO: Record<string, string> = {
-  Agent: 'appelle un membre de l’équipe', TodoWrite: 'écrit et coche le plan', Read: 'lit un fichier', Write: 'crée un fichier',
-  Edit: 'retouche un fichier', Glob: 'cherche des fichiers', Grep: 'cherche dans les fichiers', WebSearch: 'cherche sur internet',
-  WebFetch: 'lit une page web', Bash: 'lance une commande',
+  Agent: 'poziva člana tima', TodoWrite: 'upisuje i štiklira plan', Read: 'čita fajl', Write: 'pravi fajl',
+  Edit: 'menja fajl', Glob: 'traži fajlove', Grep: 'traži po fajlovima', WebSearch: 'traži na internetu',
+  WebFetch: 'čita veb stranicu', Bash: 'pokreće komandu',
 };
 
 /** Le métier d'un agent, d'après le type d'agent que le chef a appelé. */
@@ -48,13 +66,14 @@ export function roleOfType(type: string): Role {
 
 /** Les prénoms des robots, par métier (jamais deux fois le même dans une mission). */
 export const NAMES: Record<Role, string[]> = {
-  chef: ['Max'],
-  recherche: ['Iris', 'Hugo', 'Léa', 'Malo', 'Zoé', 'Noé', 'Inès', 'Tom', 'Jade', 'Sacha', 'Lou', 'Nils'],
-  code: ['Ada', 'Linus', 'Grace', 'Alan', 'Margaret', 'Dennis'],
-  design: ['Frida', 'Coco', 'Henri', 'Sonia', 'Saul'],
-  redaction: ['Colette', 'Victor', 'Simone', 'Jules', 'George'],
-  analyse: ['Marie', 'Blaise', 'Émilie', 'Gaspard', 'Ada'],
-  renfort: ['Bob', 'Lulu', 'Gaston', 'Nina', 'Momo', 'Kiki'],
+  chef: ['Šef'],
+  recherche: ['Marko', 'Ana', 'Luka', 'Jelena', 'Nikola', 'Mila', 'Stefan', 'Ivana'],
+  code: ['Petar', 'Sara', 'Vuk', 'Teodora', 'Filip', 'Nina'],
+  design: ['Mina', 'Lazar', 'Dunja', 'Pavle', 'Lena'],
+  redaction: ['Jovan', 'Tamara', 'Uroš', 'Maja', 'Đorđe'],
+  analyse: ['Milica', 'Bojan', 'Katarina', 'Dušan', 'Vesna'],
+  sesti: ['Ognjen', 'Sofija', 'Relja', 'Hana', 'Andrej'],
+  renfort: ['Žika', 'Mika', 'Laza', 'Pera', 'Kosta', 'Bata'],
 };
 
 const base = (p: unknown) => (typeof p === 'string' ? p.split(/[\\/]/).filter(Boolean).pop() ?? p : '');
@@ -67,7 +86,7 @@ export const host = (u: unknown) => {
 };
 
 const MCP_NAMES: Record<string, string> = {
-  gmail: 'Gmail', google_drive: 'Google Drive', notion: 'Notion', google_calendar: 'Google Agenda', calendar: 'Google Agenda',
+  gmail: 'Gmail', google_drive: 'Google Drive', notion: 'Notion', google_calendar: 'Google Kalendar', calendar: 'Google Kalendar',
   slack: 'Slack', github: 'GitHub', stripe: 'Stripe', hubspot: 'HubSpot', airtable: 'Airtable',
 };
 
@@ -83,29 +102,29 @@ export function mcpName(tool: string): { server: string; action: string } {
 export function describeAct(tool: string, input: Record<string, unknown> | undefined): { kind: ActKind; label: string; detail: string } {
   const i = input ?? {};
   switch (tool) {
-    case 'WebSearch': return { kind: 'search', label: `Je cherche « ${cut(i.query, 44)} »`, detail: String(i.query ?? '') };
-    case 'WebFetch': return { kind: 'web', label: `Je lis ${host(i.url)}`, detail: String(i.url ?? '') };
-    case 'Read': return { kind: 'read', label: `Je lis ${cut(base(i.file_path), 36)}`, detail: String(i.file_path ?? '') };
-    case 'Glob': return { kind: 'read', label: 'Je fouille le dossier', detail: String(i.pattern ?? '') };
-    case 'Grep': return { kind: 'read', label: `Je cherche « ${cut(i.pattern, 30)} »`, detail: `${i.pattern ?? ''}${i.path ? ' dans ' + i.path : ''}` };
-    case 'LS': return { kind: 'read', label: 'Je regarde le dossier', detail: String(i.path ?? '') };
-    case 'Write': return { kind: 'write', label: `J’écris ${cut(base(i.file_path), 36)}`, detail: String(i.file_path ?? '') };
+    case 'WebSearch': return { kind: 'search', label: `Tražim „${cut(i.query, 44)}”`, detail: String(i.query ?? '') };
+    case 'WebFetch': return { kind: 'web', label: `Čitam ${host(i.url)}`, detail: String(i.url ?? '') };
+    case 'Read': return { kind: 'read', label: `Čitam ${cut(base(i.file_path), 36)}`, detail: String(i.file_path ?? '') };
+    case 'Glob': return { kind: 'read', label: 'Prekopavam folder', detail: String(i.pattern ?? '') };
+    case 'Grep': return { kind: 'read', label: `Tražim „${cut(i.pattern, 30)}”`, detail: `${i.pattern ?? ''}${i.path ? ' u ' + i.path : ''}` };
+    case 'LS': return { kind: 'read', label: 'Gledam folder', detail: String(i.path ?? '') };
+    case 'Write': return { kind: 'write', label: `Pišem ${cut(base(i.file_path), 36)}`, detail: String(i.file_path ?? '') };
     case 'Edit':
-    case 'MultiEdit': return { kind: 'edit', label: `Je retouche ${cut(base(i.file_path), 34)}`, detail: String(i.file_path ?? '') };
-    case 'NotebookEdit': return { kind: 'edit', label: `Je retouche ${cut(base(i.notebook_path), 34)}`, detail: String(i.notebook_path ?? '') };
+    case 'MultiEdit': return { kind: 'edit', label: `Menjam ${cut(base(i.file_path), 34)}`, detail: String(i.file_path ?? '') };
+    case 'NotebookEdit': return { kind: 'edit', label: `Menjam ${cut(base(i.notebook_path), 34)}`, detail: String(i.notebook_path ?? '') };
     case 'Bash': {
       const c = String(i.command ?? '').replace(/\s+/g, ' ').trim();
-      return { kind: 'bash', label: `Je lance ${c.length <= 34 ? `« ${c} »` : cut(i.description || c, 40)}`, detail: String(i.command ?? '') };
+      return { kind: 'bash', label: `Pokrećem ${c.length <= 34 ? `„${c}”` : cut(i.description || c, 40)}`, detail: String(i.command ?? '') };
     }
-    case 'TodoWrite': return { kind: 'plan', label: 'Je mets le plan à jour', detail: '' };
-    case 'Skill': return { kind: 'skill', label: `J’applique la méthode ${cut(i.skill ?? i.name, 24)}`, detail: String(i.args ?? '') };
-    case 'ToolSearch': return { kind: 'other', label: 'Je cherche le bon outil', detail: String(i.query ?? '') };
+    case 'TodoWrite': return { kind: 'plan', label: 'Ažuriram plan', detail: '' };
+    case 'Skill': return { kind: 'skill', label: `Primenjujem metod ${cut(i.skill ?? i.name, 24)}`, detail: String(i.args ?? '') };
+    case 'ToolSearch': return { kind: 'other', label: 'Tražim pravi alat', detail: String(i.query ?? '') };
   }
   if (tool.startsWith('mcp__')) {
     const { server, action } = mcpName(tool);
-    return { kind: 'mcp', label: `Je passe par ${server}`, detail: action };
+    return { kind: 'mcp', label: `Idem preko ${server}`, detail: action };
   }
-  return { kind: 'other', label: `J’utilise ${tool}`, detail: '' };
+  return { kind: 'other', label: `Koristim ${tool}`, detail: '' };
 }
 
 export const emptyStats = (): MissionStats => ({ agents: 0, searches: 0, pages: 0, reads: 0, writes: 0, commands: 0 });
@@ -144,20 +163,20 @@ export function permissionText(tool: string, input: Record<string, unknown> | un
   if (tool === 'Bash') {
     const c = readableCommand(i.command, folder);
     const full = c.length > 0 && c.length <= FULL_MAX && !c.includes('\n');
-    return { label: `Je peux lancer « ${full ? c : cut(c, 48)} » ?`, detail: c, full };
+    return { label: `Mogu li da pokrenem „${full ? c : cut(c, 48)}”?`, detail: c, full };
   }
   if (tool === 'Write' || tool === 'Edit' || tool === 'MultiEdit' || tool === 'NotebookEdit') {
     const raw = String(i.file_path ?? i.notebook_path ?? '');
     const rel = relToFolder(raw, folder);
     const inside = !!folder && raw.startsWith(folder + '/') && !rel.includes('..');
-    return { label: `Je peux ${tool === 'Write' ? 'écrire' : 'modifier'} ${inside ? rel : raw} ?`, detail: raw, full: inside && rel.length <= FULL_MAX };
+    return { label: `Mogu li da ${tool === 'Write' ? 'upišem' : 'izmenim'} ${inside ? rel : raw}?`, detail: raw, full: inside && rel.length <= FULL_MAX };
   }
-  if (tool === 'WebFetch') return { label: `Je peux lire ${host(i.url)} ?`, detail: String(i.url ?? ''), full: false };
+  if (tool === 'WebFetch') return { label: `Mogu li da pročitam ${host(i.url)}?`, detail: String(i.url ?? ''), full: false };
   const detail = relToFolder(JSON.stringify(i, null, 2), folder);
   const clipped = detail.length > 1500 ? detail.slice(0, 1499) + '…' : detail;
   if (tool.startsWith('mcp__')) {
     const { server, action } = mcpName(tool);
-    return { label: `Je peux passer par ${server} (${action}) ?`, detail: clipped, full: false };
+    return { label: `Mogu li da idem preko ${server} (${action})?`, detail: clipped, full: false };
   }
-  return { label: `Je peux utiliser ${tool} ?`, detail: clipped, full: false };
+  return { label: `Mogu li da koristim ${tool}?`, detail: clipped, full: false };
 }

@@ -6,6 +6,10 @@ import { Cat } from './cat.ts';
 import { Fx } from './fx.ts';
 import { iconFor } from './icons.ts';
 import { CHEF_SEAT, SEATS, SPOTS, T, WINDOWS, tileFeet, walkGrid, type Seat } from './layout.ts';
+import { bus } from '../state/bus.ts';
+
+/** Posle koliko sekundi bez posla šef ustaje od stola (režim posmatrača). */
+const CHEF_IDLE_S = 45;
 import { findPath, type Tile } from './path.ts';
 import type { Dir, Eyes, Pose } from './robots.ts';
 
@@ -52,6 +56,8 @@ export class Actor {
   reported = false;
   delivered = false;
   left = false;
+  /** režim posmatrača: agent se vratio sa greškom i čeka klik */
+  failed = false;
   gone = false;
   animT = 0;
   nextBlink = 1 + Math.random() * 3;
@@ -93,6 +99,8 @@ export class World {
   printUntil = 0;
   boardUntil = 0;
   missionActive = false;
+  /** režim posmatrača: kad je šef poslednji put imao posla (svoja radnja ili novi radnik) */
+  chefWorkAt = 0;
   plan: PlanItem[] = [];
   /** qui fait quoi : écrit au tableau, coché quand l'agent a rendu son travail */
   assignments: { id: string; role: Role; name: string; task: string; status: 'working' | 'done' | 'failed' }[] = [];
@@ -278,6 +286,10 @@ export class World {
       }
       case 'hire': {
         if (this.actors.has(ev.id)) break;
+        // posmatrač: kad radnik uđe, šef sedne za svoj sto
+        if (bus.posmatrac) this.chefToDesk(live);
+        // novi agent u odeljenju oslobađa onog koji je tu ostao sa greškom
+        if (bus.posmatrac) for (const x of this.actors.values()) if (x.failed && x.role === ev.role) this.dismiss(x.id);
         const seat = this.assignSeat(ev.role);
         const a = new Actor(ev.id, ev.role, ev.name, SPOTS.doorOut.x - 8 + Math.random() * 16, SPOTS.doorOut.y);
         if (!this.assignments.some((x) => x.id === ev.id)) this.assignments.push({ id: ev.id, role: ev.role, name: ev.name, task: ev.task, status: 'working' });
@@ -306,6 +318,13 @@ export class World {
         if (!a) break;
         a.act = ev.kind;
         a.actAt = this.time;
+        // posmatrač: nema 'start' događaja, pa šef seda za sto pri prvoj radnji (i posle osvežavanja strane)
+        if (a === chef && bus.posmatrac) this.chefToDesk(live);
+        else if (a === chef && !a.seated && !a.busy) {
+          this.missionActive = true;
+          if (live) this.queue(a, { t: 'walk', tile: CHEF_SEAT.tile }, { t: 'sit', seat: CHEF_SEAT });
+          else this.snapSeat(a, CHEF_SEAT);
+        }
         if (!live) break;
         this.fx.floatIcon(a.x + (a.seated ? 0 : 1), a.y - 24, iconFor(ev.kind));
         if (ev.kind === 'search' || ev.kind === 'web') this.fx.data(this.nearestWindow(a), { x: a.x, y: a.y - 8 }, ev.kind === 'web' ? '#3ddc97' : '#7fd6ff');
@@ -326,6 +345,12 @@ export class World {
         if (!a || a.left) break;
         a.left = true;
         if (!live) { this.remove(a); break; }
+        if (bus.posmatrac) {
+          // uspeh: „Gotovo” ~5 s za stolom, pa preda rezultat šefu i ode; greška: ostaje dok ga ne pustiš
+          if (ev.ok) { this.queue(a, { t: 'wait', ms: 5000 }); a.reported = true; this.deliver(a); this.exit(a); }
+          else { a.failed = true; a.sadUntil = this.time + 3600; }
+          break;
+        }
         if (ev.ok && !a.reported) { a.reported = true; this.deliver(a); }
         if (!ev.ok) a.sadUntil = this.time + 2;
         this.exit(a);
@@ -410,6 +435,34 @@ export class World {
   }
 
   /** Il repart par la porte (et libère son bureau). */
+  /** šef upravo ide na sredinu jer nema posla (posao ga vraća za sto i usred hoda) */
+  private chefIdleWalk = false;
+  private chefDeskWalk = false;
+
+  /** Posmatrač: šef ima posla (svoja radnja ili novi radnik) → za sto, i ako je krenuo na sredinu. */
+  private chefToDesk(live: boolean) {
+    const chef = this.chef;
+    this.chefWorkAt = this.time;
+    this.missionActive = true;
+    if (chef.seated || this.chefDeskWalk) return;
+    if (!live) { chef.tasks = []; chef.cur = null; this.chefIdleWalk = false; this.snapSeat(chef, CHEF_SEAT); return; }
+    if (chef.busy && !this.chefIdleWalk) return; // radi nešto drugo (piše po tabli…): seda posle toga
+    chef.tasks = [];
+    chef.cur = null;
+    this.chefIdleWalk = false;
+    this.chefDeskWalk = true;
+    this.queue(chef, { t: 'walk', tile: CHEF_SEAT.tile }, { t: 'sit', seat: CHEF_SEAT }, { t: 'call', fn: () => { this.chefDeskWalk = false; } });
+  }
+
+  /** Agent sa greškom (režim posmatrača) dobija dozvolu da ode. */
+  dismiss(id: string) {
+    const a = this.actors.get(id);
+    if (!a || !a.failed) return;
+    a.failed = false;
+    a.sadUntil = 0;
+    this.exit(a);
+  }
+
   private exit(a: Actor) {
     this.queue(a,
       { t: 'call', fn: () => { if (a.seat) this.seatOf.delete(a.seat.id); } },
@@ -460,6 +513,15 @@ export class World {
         a.actAt = this.time;
         this.fx.floatIcon(a.x, a.y - 24, iconFor(a.act));
       }
+    }
+    // posmatrač: šef bez posla (nema svojih radnji, nema radnika) ustane i ode na sredinu kancelarije
+    if (chef.seated || !chef.busy) { this.chefDeskWalk = false; if (!chef.busy) this.chefIdleWalk = false; }
+    if (bus.posmatrac && chef.seated && !chef.busy && this.time - this.chefWorkAt > CHEF_IDLE_S
+      && ![...this.actors.values()].some((x) => x !== chef && !x.left)) {
+      this.missionActive = false;
+      this.waveAt = this.time + 4;
+      this.chefIdleWalk = true;
+      this.queue(chef, { t: 'stand' }, { t: 'walk', tile: SPOTS.center }, { t: 'wait', ms: 300, dir: 'down' }, { t: 'call', fn: () => { this.chefIdleWalk = false; } });
     }
     // Max salue de temps en temps quand il attend à l'accueil
     if (!this.missionActive && !chef.busy && !chef.seated && this.time > this.waveAt) {
