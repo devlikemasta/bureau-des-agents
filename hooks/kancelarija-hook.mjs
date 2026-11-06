@@ -26,6 +26,14 @@ process.stdin.on('end', async () => {
   if (!h?.session_id || !akt.sesije?.[h.session_id]) done();
   // Pre Stefanove poruke: šta je on menjao na tabli? Tekst na stdout ide u razgovor kao kontekst.
   if (h.hook_event_name === 'UserPromptSubmit') {
+    // obaveštenja o završenim pozadinskim zadacima stižu kao poruka: javi kancelariji (duge radnje)
+    const tasks = [...String(h.prompt ?? '').matchAll(/<task-id>([^<]+)<\/task-id>[\s\S]*?<status>([^<]+)<\/status>/g)].map((x) => ({ id: x[1].trim(), status: x[2].trim() }));
+    if (tasks.length) {
+      await fetch(`http://127.0.0.1:${akt.port}/hook`, {
+        method: 'POST', headers: { 'content-type': 'application/json', 'x-kancelarija-token': akt.token },
+        body: JSON.stringify({ event: 'TaskNotification', session_id: h.session_id, tasks }), signal: AbortSignal.timeout(300),
+      }).catch(() => {});
+    }
     try {
       const r = await fetch(`http://127.0.0.1:${akt.port}/tabla/nevidjeno`, {
         method: 'POST',
@@ -70,7 +78,7 @@ function slim(h) {
   if (r && typeof r === 'object' && (h.tool_name === 'Agent' || h.tool_name === 'Task')) {
     out.tool_response = { agentId: r.agentId, description: r.description, resolvedModel: r.resolvedModel, status: r.status, prompt: typeof r.prompt === 'string' ? r.prompt.slice(0, 2000) : undefined };
   } else if (r && typeof r === 'object') {
-    out.tool_response = { is_error: !!(r.is_error || r.error) };
+    out.tool_response = { is_error: !!(r.is_error || r.error), backgroundTaskId: r.backgroundTaskId };
   }
   return out;
 }

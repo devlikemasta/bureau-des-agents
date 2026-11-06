@@ -59,7 +59,9 @@ export function interact(hit: Hit) {
     return;
   }
   switch (id) {
-    case 'board': case 'chefDesk': sfx('open'); useOffice.setState({ modal: { kind: 'board' } }); return;
+    case 'board': sfx('open'); useOffice.setState({ modal: { kind: 'board' } }); return;
+    // posmatrač: šefov sto = duge radnje i dokle su stigle
+    case 'chefDesk': sfx('open'); useOffice.setState({ modal: { kind: st.mission?.posmatrac ? 'napredak' : 'board' } }); return;
     case 'chefChair': sfx('click'); useOffice.setState({ draft: ' ' }); return;
     case 'clock': sfx('open'); useOffice.setState({ modal: { kind: 'clock' } }); return;
     case 'rack': sfx('open'); useOffice.setState({ modal: { kind: 'machine' } }); return;

@@ -3,7 +3,7 @@
 import { create } from 'zustand';
 import { countStats, emptyStats } from '../../shared/activity.ts';
 import type {
-  ActKind, ClaudeInfo, ClientMsg, FileInfo, MissionInfo, MissionStats, OfficeEvent, PlanItem, Quota, Role, ServerMsg, Settings, TeamEntry, VersionInfo, DnevnikRed } from '../../shared/protocol.ts';
+  ActKind, ClaudeInfo, ClientMsg, FileInfo, MissionInfo, MissionStats, OfficeEvent, PlanItem, Quota, Role, ServerMsg, Settings, TeamEntry, VersionInfo, DnevnikRed, Radnja } from '../../shared/protocol.ts';
 import { sfx } from '../audio/sfx.ts';
 import { say } from '../audio/voice.ts';
 import { bus } from './bus.ts';
@@ -57,6 +57,7 @@ export type Modal =
   | { kind: 'team'; role?: Role }
   | { kind: 'files' }
   | { kind: 'dnevnik' }
+  | { kind: 'napredak' }
   | { kind: 'preview'; missionId: string; file: string };
 
 interface S {
@@ -90,6 +91,8 @@ interface S {
   teamHistory: TeamEntry[] | null;
   /** dnevni log projekta (režim posmatrača) */
   dnevnik: { projekat: string; redovi: DnevnikRed[] } | null;
+  /** duge radnje (šefov sto, režim posmatrača) */
+  radnje: Radnja[] | null;
   /** chaque version du plan, dans l'ordre (le tableau garde l'historique) */
   planHistory: { at: number; items: PlanItem[] }[];
   music: { playing: boolean; index: number; volume: number };
@@ -155,6 +158,7 @@ export const useOffice = create<S>((set, get) => ({
   versions: {},
   teamHistory: null,
   dnevnik: null,
+  radnje: null,
   planHistory: [],
   music: { playing: false, index: 0, volume: 0.55 },
   voiceOn: pref('voice', true),
@@ -225,6 +229,9 @@ export const useOffice = create<S>((set, get) => ({
         break;
       case 'dnevnik':
         set({ dnevnik: { projekat: m.projekat, redovi: m.redovi } });
+        break;
+      case 'napredak':
+        set({ radnje: m.radnje });
         break;
       case 'quota':
         set({ quota: m.quota });

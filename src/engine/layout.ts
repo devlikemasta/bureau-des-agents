@@ -106,6 +106,8 @@ export const SPOTS = {
   doorOut: { x: 11 * T, y: 16 * T + 6 },
   /** là où Max t'accueille, et où il te présente le rendu */
   reception: [10, 12] as [number, number],
+  /** sredina kancelarije: tu šef čeka kad nema posla (režim posmatrača) */
+  center: [10, 10] as [number, number],
   receptionPx: { x: 11 * T, y: 12 * T + 13 },
   /** devant le tableau du plan */
   board: [10, 3] as [number, number],

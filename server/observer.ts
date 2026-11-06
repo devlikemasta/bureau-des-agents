@@ -27,6 +27,8 @@ export interface HookMsg {
   tool_use_id?: string;
   tool_input?: Json;
   tool_response?: Json;
+  /** TaskNotification: pozadinski zadaci koji su se završili (iz <task-notification> u poruci) */
+  tasks?: { id: string; status: string }[];
 }
 
 interface Pending { toolUseId: string; type: string; description: string; prompt: string; model: string }

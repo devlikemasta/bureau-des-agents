@@ -1,13 +1,14 @@
 # Kancelarija agenata
 
-**Stanje (06.11.2026):** v1 radi i pushovana na granu `posmatrac` (fork `Stefn10/kancelarija-agenata`). Faze 0 do 5 gotove. Sledeće (nije zakazano): širenje kancelarije preko 6 odeljenja, brisanje Maxovog koda.
+**Stanje (06.11.2026):** v1 + Maxov sto (duge radnje) i Max na sredini kad nema posla; radi i pushovana na granu `posmatrac` (fork `Stefn10/kancelarija-agenata`). Faze 0 do 5 gotove. Sledeće (nije zakazano): širenje kancelarije preko 6 odeljenja, brisanje Maxovog koda.
 
 Pixel-art kancelarija u browseru (`http://localhost:4848`) koja uživo prikazuje agente iz naših Claude Code sesija. Chat je šef; kancelarija ništa ne pokreće i ne troši tokene. Osnova: open source [Bureau des agents](https://github.com/devlikemasta/bureau-des-agents) (MIT).
 
 ## Upotreba
 - `/kancelarija` u bilo kojoj sesiji (skill `~/.claude/skills/kancelarija/SKILL.md`): pali server, bira projekat po folderu, prijavljuje sesiju, otvara tab.
 - Agent ide u odeljenje po prefiksu u opisu: `[Transkripcija] RMA čas 5`.
-- Klik na lika: model, tokeni, alati. Klik na tablu: plan + tvoje stavke. Klik na policu: današnji log i ukupni tokeni.
+- Klik na lika: model, tokeni, alati. Klik na tablu: plan + tvoje stavke. Klik na policu: današnji log i ukupni tokeni. Klik na Maxov sto: duge radnje (pozadinske komande + `scripts/napredak.mjs`) sa procentom.
+- Max bez posla (45 s bez svoje radnje i bez radnika) stoji na sredini kancelarije; kad uđe radnik ili Max nešto radi, seda za sto.
 
 ## Gde je šta
 | Šta | Gde |

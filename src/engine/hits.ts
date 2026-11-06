@@ -17,7 +17,7 @@ function furnitureLabel(id: string, kind: string, role?: Role): string {
   switch (kind) {
     case 'desk': return `Sto iz kutka ${ROLES[role ?? 'renfort'].label}`;
     case 'chair': return `Radno mesto iz kutka ${ROLES[role ?? 'renfort'].label}`;
-    case 'chefDesk': return 'Maxov sto: izveštaji tima';
+    case 'chefDesk': return 'Maxov sto: dokle su stigle duge radnje';
     case 'chefChair': return 'Maxova fotelja';
     case 'rack': return 'Server: Claude Code i tvoja pretplata';
     case 'printer': return 'Štampač: predati fajlovi zadatka';

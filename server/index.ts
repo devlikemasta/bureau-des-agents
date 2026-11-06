@@ -21,6 +21,7 @@ import { Observer, type HookMsg } from './observer.ts';
 import { Projekti, type Projekat } from './projekti.ts';
 import { Tabla } from './tabla.ts';
 import { Dnevnik } from './dnevnik.ts';
+import { Napredak, procenatIz } from './napredak.ts';
 import { watch } from 'node:fs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -120,7 +121,13 @@ const observer = new Observer((ev) => {
   return { uloga: s?.uloga ?? 'sef', ime: s?.ime ?? '' };
 });
 
+const napredak = new Napredak();
+
 function onHook(m: HookMsg) {
+  // duge radnje: pozadinska komanda je krenula / završila se
+  if (m.event === 'TaskNotification') { for (const t of m.tasks ?? []) napredak.kraj(t.id, t.status); return; }
+  const bg = m.event === 'PostToolUse' && m.tool_name === 'Bash' ? String(m.tool_response?.backgroundTaskId ?? '') : '';
+  if (bg) napredak.bash(m.session_id, bg, String(m.tool_input?.description ?? m.tool_input?.command ?? ''), m.agent_id ? (zaposleni.get(m.agent_id)?.ime ?? 'Agent') : 'Max');
   const { slug, p } = projekatOf(m);
   prikazi(slug, p);
   const pre = bureau.current?.mission.id;
@@ -165,6 +172,19 @@ async function claudeTablaRoute(req: http.IncomingMessage, res: http.ServerRespo
   res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' }).end(out);
 }
 
+/** scripts/napredak.mjs: Claude javlja dokle je stigla duga radnja. */
+async function napredakRoute(req: http.IncomingMessage, res: http.ServerResponse) {
+  if (req.method !== 'POST' || req.headers['x-kancelarija-token'] !== TOKEN) { res.writeHead(403).end(); return; }
+  let body = '';
+  for await (const chunk of req) { body += chunk; if (body.length > 10_000) { res.writeHead(413).end(); return; } }
+  let m: { session_id?: string; naziv?: string; procenat?: number | string; poruka?: string; gotovo?: boolean } = {};
+  try { m = JSON.parse(body); } catch { /* prazno */ }
+  const poruka = str(m.poruka, 200);
+  const p = m.procenat === undefined || m.procenat === '' ? procenatIz(poruka) : Number(m.procenat);
+  napredak.rucno(m.session_id ?? '', str(m.naziv, 100), p, poruka, m.gotovo === true);
+  res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' }).end('ok');
+}
+
 async function hookRoute(req: http.IncomingMessage, res: http.ServerResponse) {
   if (req.method !== 'POST' || req.headers['x-kancelarija-token'] !== TOKEN) { res.writeHead(403).end(); return; }
   let body = '';
@@ -179,6 +199,7 @@ const server = http.createServer(async (req, res) => {
   if (url0.pathname === '/hook') { await hookRoute(req, res); return; }
   if (url0.pathname === '/tabla/nevidjeno') { await nevidjenoRoute(req, res); return; }
   if (url0.pathname === '/tabla/claude') { await claudeTablaRoute(req, res); return; }
+  if (url0.pathname === '/napredak') { await napredakRoute(req, res); return; }
   if (url0.pathname.startsWith('/apercu/')) { await preview(url0, res); return; }
   if (DEV) { res.writeHead(404).end(`Mode développement : le bureau est sur http://localhost:${DEV_PORT}`); return; }
   try {
@@ -297,6 +318,9 @@ async function handle(m: ClientMsg, send: (m: ServerMsg) => void) {
     }
     case 'settings':
       bureau.setSettings(m.settings ?? {});
+      break;
+    case 'napredak':
+      send({ t: 'napredak', radnje: napredak.pregled() });
       break;
     case 'dnevnik':
       send({ t: 'dnevnik', projekat: aktivan?.ime || aktivanSlug, redovi: aktivanSlug ? dnevnik.danas(aktivanSlug) : [] });

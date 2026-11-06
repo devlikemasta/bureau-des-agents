@@ -47,6 +47,7 @@ export function Rooms() {
     case 'team': return <TeamRoom role={modal.role} />;
     case 'files': return <FilesRoom />;
     case 'dnevnik': return <DnevnikRoom />;
+    case 'napredak': return <NapredakRoom />;
     case 'preview': return <PreviewRoom missionId={modal.missionId} file={modal.file} />;
   }
 }
@@ -230,6 +231,39 @@ function Tabla({ plan, done, team }: { plan: PlanItem[]; done: number; team: Ret
           </div>
         ) : <p className="muted small">Danas još niko.</p>}
       </section>
+    </Shell>
+  );
+}
+
+// ── Šefov sto: duge radnje (transkripcija, render…) i dokle su stigle; osvežava se na 2 s ──
+function NapredakRoom() {
+  const radnje = useOffice((s) => s.radnje);
+  const send = useOffice((s) => s.send);
+  useEffect(() => {
+    send({ t: 'napredak' });
+    const t = setInterval(() => send({ t: 'napredak' }), 2000);
+    return () => clearInterval(t);
+  }, [send]);
+  const lista = radnje ?? [];
+  const rade = lista.filter((r) => r.stanje === 'radi').length;
+  return (
+    <Shell title="Maxov sto" sub={radnje ? (rade ? `${rade} ${rade === 1 ? 'radnja traje' : 'radnje traju'}` : 'Nijedna duga radnja ne traje') : 'Učitavam…'}>
+      {lista.length ? lista.map((r) => (
+        <div key={r.id} className="room-sec" style={{ marginBottom: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+            <b>{r.stanje === 'gotovo' ? '✓ ' : r.stanje === 'greska' ? '✕ ' : '⏳ '}{r.naziv}</b>
+            <span className="muted small">{r.ko} · {fmtDuration((r.stanje === 'radi' ? Date.now() : r.azurirano) - r.start)}</span>
+          </div>
+          {r.procenat !== undefined || r.stanje === 'radi' ? (
+            <div className="progress" style={{ marginTop: 6 }}><i style={{ width: `${r.procenat ?? 4}%`, opacity: r.procenat === undefined ? 0.4 : 1, background: r.stanje === 'greska' ? '#e5484d' : undefined }} /></div>
+          ) : null}
+          <p className="small muted" style={{ marginTop: 4 }}>
+            {r.procenat !== undefined ? <b>{r.procenat}% · </b> : null}
+            {r.poruka || (r.stanje === 'radi' ? 'Čekam prvi ispis…' : '')}
+            {r.tiho ? ' · (dugo bez novog ispisa)' : ''}
+          </p>
+        </div>
+      )) : <p className="muted">Ovde se vide duge radnje: transkripcija, render, preuzimanje. Svaka pozadinska komanda se pojavi sama, a Max javlja napredak kad ga proveri.</p>}
     </Shell>
   );
 }
