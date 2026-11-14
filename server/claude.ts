@@ -24,8 +24,12 @@ function run(file: string, args: string[]): Promise<string> {
 /** Trouve l'exécutable `claude` (sans passer par les alias du terminal). */
 export async function findClaude(): Promise<ClaudeBinary | null> {
   const home = os.homedir();
-  const fromPath = (process.env.PATH ?? '').split(path.delimiter).filter(Boolean).map((d) => path.join(d, 'claude'));
-  const candidates = [process.env.CLAUDE_BIN, ...fromPath, path.join(home, '.local/bin/claude'), path.join(home, '.claude/local/claude'), '/opt/homebrew/bin/claude', '/usr/local/bin/claude'];
+  // Windows : les wrappers npm (`claude`, `claude.cmd`) ne se lancent pas via execFile ; on vise le claude.exe qu'ils appellent.
+  const names = process.platform === 'win32'
+    ? ['claude.exe', path.join('node_modules', '@anthropic-ai', 'claude-code', 'bin', 'claude.exe'), 'claude']
+    : ['claude'];
+  const fromPath = (process.env.PATH ?? '').split(path.delimiter).filter(Boolean).flatMap((d) => names.map((n) => path.join(d, n)));
+  const candidates = [process.env.CLAUDE_BIN, ...fromPath, path.join(home, '.local/bin/claude'), path.join(home, '.local/bin/claude.exe'), path.join(home, '.claude/local/claude'), '/opt/homebrew/bin/claude', '/usr/local/bin/claude'];
   for (const c of new Set(candidates.filter((x): x is string => !!x))) {
     if (!existsSync(c)) continue;
     try {
