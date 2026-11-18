@@ -82,6 +82,9 @@ export class ClaudeProcess {
       // mode restreint : seuls les outils listés existent, les outils de fichiers restent dans le dossier
       // de la mission, et ni tes réglages ni tes agents personnels ne s'invitent dans le bureau
       '--restricted', '--tools', o.tools.join(','),
+      // pas de serveurs MCP (ni ceux de tes réglages, ni les connecteurs de ton compte claude.ai) :
+      // l'équipe n'en a pas besoin, et avec beaucoup de connecteurs, leurs outils dépassent la limite de l'API
+      '--strict-mcp-config',
       '--agents', o.agents,
       '--append-system-prompt', o.appendSystemPrompt];
     if (o.model) args.push('--model', o.model);
@@ -98,6 +101,8 @@ export class ClaudeProcess {
       CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH: '1',
       // l'équipe travaille au premier plan : le chef attend les rapports, puis assemble le rendu
       CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1',
+      // les connecteurs du compte claude.ai (Gmail, Notion…) restent hors du bureau
+      ENABLE_CLAUDEAI_MCP_SERVERS: 'false',
     };
     if (!o.useApiKey) { delete env.ANTHROPIC_API_KEY; delete env.ANTHROPIC_AUTH_TOKEN; }
     const p = spawn(o.bin, args, { cwd: o.cwd, env, stdio: ['pipe', 'pipe', 'pipe'] });
