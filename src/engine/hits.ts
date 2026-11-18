@@ -31,6 +31,7 @@ function furnitureLabel(id: string, kind: string, role?: Role): string {
     case 'coffee': return 'La machine à café';
     case 'bin': return 'La corbeille';
     case 'jukebox': return 'Le jukebox';
+    case 'popcorn': return 'La machine à pop-corn (clique pour en faire)';
   }
   return id;
 }

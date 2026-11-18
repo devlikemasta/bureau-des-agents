@@ -2,7 +2,7 @@
 // synthèse sonore) : aucun fichier audio. Discrets, et coupables d'un clic (le bouton du son).
 import { ZZFX, zzfx } from 'zzfx';
 
-type Name = 'blip' | 'spawn' | 'tick' | 'search' | 'paper' | 'print' | 'plan' | 'check' | 'ask' | 'yes' | 'no' | 'send' | 'done' | 'error' | 'click' | 'open' | 'meow' | 'pour' | 'glug';
+type Name = 'blip' | 'spawn' | 'tick' | 'search' | 'paper' | 'print' | 'plan' | 'check' | 'ask' | 'yes' | 'no' | 'send' | 'done' | 'error' | 'click' | 'open' | 'meow' | 'pour' | 'glug' | 'pop';
 
 let muted = false;
 export function setMuted(m: boolean) { muted = m; }
@@ -42,6 +42,7 @@ export function sfx(name: Name, pitch = 1) {
       case 'done': notes([[523, 0], [659, 110], [784, 220], [1047, 360]]); break;
       case 'meow': zzfx(0.22, 0.05, 620, 0.03, 0.14, 0.22, 0, 1.6, 7, -10, 0, 0, 0, 0, 2, 0, 0, 0.7); break;
       case 'pour': zzfx(0.1, 0.3, 300, 0.05, 0.5, 0.25, 4, 1, 0, 0, 0, 0, 0, 0.7); break;
+      case 'pop': zzfx(0.14, 0.05, 900 * pitch, 0, 0.006, 0.03, 4, 2, 0, 0, 0, 0, 0, 0.6); break;
       case 'glug': zzfx(0.16, 0.1, 190, 0.01, 0.04, 0.08, 0, 1, 12, 0, 0, 0, 0.09); break;
     }
   } catch { /* pas d'audio sur cet appareil */ }

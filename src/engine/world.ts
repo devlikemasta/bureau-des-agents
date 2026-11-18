@@ -495,6 +495,12 @@ export class World {
     this.fx.floatIcon(16 * T + 12, 13 * T - 2, 'coffee');
   }
 
+  /** La machine à pop-corn (coin canapé) : des grains qui sautent hors de la vitrine. */
+  popcorn() {
+    this.wiggles.set('popcorn', this.time + 0.6);
+    for (let i = 0; i < 4; i++) this.fx.sparkle(7 * T + 5 + Math.random() * 6, 14 * T - 4 - Math.random() * 4, 3, i % 2 ? '#fff7dc' : '#ffe7a3');
+  }
+
   cooler() {
     for (let i = 0; i < 6; i++) this.fx.sparkle(9 * T + 8, 3 * T + 4 - i, 1, '#bfe3ff');
     this.fx.floatIcon(9 * T + 8, 3 * T - 4, 'drop');

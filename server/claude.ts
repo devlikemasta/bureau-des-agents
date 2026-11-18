@@ -24,8 +24,10 @@ function run(file: string, args: string[]): Promise<string> {
 /** Trouve l'exécutable `claude` (sans passer par les alias du terminal). */
 export async function findClaude(): Promise<ClaudeBinary | null> {
   const home = os.homedir();
-  const fromPath = (process.env.PATH ?? '').split(path.delimiter).filter(Boolean).map((d) => path.join(d, 'claude'));
-  const candidates = [process.env.CLAUDE_BIN, ...fromPath, path.join(home, '.local/bin/claude'), path.join(home, '.claude/local/claude'), '/opt/homebrew/bin/claude', '/usr/local/bin/claude'];
+  // sur Windows, l'exécutable s'appelle claude.exe (installateur officiel, winget)
+  const names = process.platform === 'win32' ? ['claude.exe', 'claude'] : ['claude'];
+  const dirs = [...(process.env.PATH ?? '').split(path.delimiter).filter(Boolean), path.join(home, '.local', 'bin'), path.join(home, '.claude', 'local')];
+  const candidates = [process.env.CLAUDE_BIN, ...dirs.flatMap((d) => names.map((n) => path.join(d, n))), '/opt/homebrew/bin/claude', '/usr/local/bin/claude'];
   for (const c of new Set(candidates.filter((x): x is string => !!x))) {
     if (!existsSync(c)) continue;
     try {
@@ -80,6 +82,9 @@ export class ClaudeProcess {
       // mode restreint : seuls les outils listés existent, les outils de fichiers restent dans le dossier
       // de la mission, et ni tes réglages ni tes agents personnels ne s'invitent dans le bureau
       '--restricted', '--tools', o.tools.join(','),
+      // pas de serveurs MCP (ni ceux de tes réglages, ni les connecteurs de ton compte claude.ai) :
+      // l'équipe n'en a pas besoin, et avec beaucoup de connecteurs, leurs outils dépassent la limite de l'API
+      '--strict-mcp-config',
       '--agents', o.agents,
       '--append-system-prompt', o.appendSystemPrompt];
     if (o.model) args.push('--model', o.model);
@@ -96,6 +101,8 @@ export class ClaudeProcess {
       CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH: '1',
       // l'équipe travaille au premier plan : le chef attend les rapports, puis assemble le rendu
       CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1',
+      // les connecteurs du compte claude.ai (Gmail, Notion…) restent hors du bureau
+      ENABLE_CLAUDEAI_MCP_SERVERS: 'false',
     };
     if (!o.useApiKey) { delete env.ANTHROPIC_API_KEY; delete env.ANTHROPIC_AUTH_TOKEN; }
     const p = spawn(o.bin, args, { cwd: o.cwd, env, stdio: ['pipe', 'pipe', 'pipe'] });

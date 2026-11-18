@@ -499,6 +499,41 @@ function jukeboxSprite(): Sprite {
   return { c, ox: 0, oy: -22, sort: 14 };
 }
 
+/** La machine à pop-corn du coin canapé : un chariot rouge, une vitrine pleine de pop-corn, un toit rayé. */
+function popcornSprite(): Sprite {
+  const c = makeCanvas(14, 30);
+  const g = g2d(c);
+  // le toit rayé rouge et blanc
+  rect(g, 1, 0, 12, 4, '#e8473f');
+  for (const x of [3, 7, 11]) rect(g, x, 0, 2, 4, '#f6f2e9');
+  hline(g, 1, 4, 12, '#a8302b');
+  // la vitrine, remplie à moitié de pop-corn
+  rect(g, 2, 5, 10, 11, '#bfe3ff55');
+  vline(g, 2, 5, 11, '#e8473f');
+  vline(g, 11, 5, 11, '#e8473f');
+  rect(g, 3, 10, 8, 6, '#ffe7a3');
+  for (const [x, y] of [[3, 10], [5, 9], [7, 10], [9, 9], [4, 12], [8, 12], [6, 14], [10, 13]] as [number, number][]) px(g, x, y, '#fff7dc');
+  for (const [x, y] of [[6, 11], [9, 11], [4, 14]] as [number, number][]) px(g, x, y, '#f2c14e');
+  px(g, 3, 6, '#ffffff');
+  vline(g, 3, 7, 2, '#ffffff99');
+  // la petite marmite suspendue
+  rect(g, 5, 5, 4, 2, P.metalDark);
+  hline(g, 5, 5, 4, P.metal);
+  // le chariot
+  rect(g, 1, 16, 12, 10, '#e8473f');
+  hline(g, 1, 16, 12, '#ff6b5e');
+  vline(g, 12, 17, 9, '#a8302b');
+  rect(g, 4, 19, 6, 3, '#ffd166');
+  hline(g, 5, 20, 4, '#e8473f');
+  // les roues
+  rect(g, 2, 26, 3, 3, '#2b2836');
+  rect(g, 9, 26, 3, 3, '#2b2836');
+  px(g, 3, 27, P.metal);
+  px(g, 10, 27, P.metal);
+  outline(c, P.ink);
+  return { c, ox: 1, oy: -14, sort: 14 };
+}
+
 const cache = new Map<string, Sprite>();
 
 export function furnitureSprite(f: Furn): Sprite {
@@ -524,6 +559,7 @@ export function furnitureSprite(f: Furn): Sprite {
     case 'easel': s = easelSprite(); break;
     case 'bin': s = binSprite(); break;
     case 'jukebox': s = jukeboxSprite(); break;
+    case 'popcorn': s = popcornSprite(); break;
   }
   cache.set(key, s);
   return s;
