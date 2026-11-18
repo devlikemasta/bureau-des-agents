@@ -24,8 +24,10 @@ function run(file: string, args: string[]): Promise<string> {
 /** Trouve l'exécutable `claude` (sans passer par les alias du terminal). */
 export async function findClaude(): Promise<ClaudeBinary | null> {
   const home = os.homedir();
-  const fromPath = (process.env.PATH ?? '').split(path.delimiter).filter(Boolean).map((d) => path.join(d, 'claude'));
-  const candidates = [process.env.CLAUDE_BIN, ...fromPath, path.join(home, '.local/bin/claude'), path.join(home, '.claude/local/claude'), '/opt/homebrew/bin/claude', '/usr/local/bin/claude'];
+  // sur Windows, l'exécutable s'appelle claude.exe (installateur officiel, winget)
+  const names = process.platform === 'win32' ? ['claude.exe', 'claude'] : ['claude'];
+  const dirs = [...(process.env.PATH ?? '').split(path.delimiter).filter(Boolean), path.join(home, '.local', 'bin'), path.join(home, '.claude', 'local')];
+  const candidates = [process.env.CLAUDE_BIN, ...dirs.flatMap((d) => names.map((n) => path.join(d, n))), '/opt/homebrew/bin/claude', '/usr/local/bin/claude'];
   for (const c of new Set(candidates.filter((x): x is string => !!x))) {
     if (!existsSync(c)) continue;
     try {
