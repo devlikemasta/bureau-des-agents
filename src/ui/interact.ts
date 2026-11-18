@@ -69,6 +69,7 @@ export function interact(hit: Hit) {
     case 'neon': world.neonNext(); sfx('check'); return;
     case 'window': { const n = TOD_NEXT[st.tod]; useOffice.setState({ tod: n }); savePref('tod', n); sfx('click'); return; }
     case 'coffee': world.coffee(); sfx('pour'); return;
+    case 'popcorn': world.popcorn(); for (let i = 0; i < 5; i++) setTimeout(() => sfx('pop', 0.8 + Math.random() * 0.5), i * 120 + Math.random() * 60); return;
     case 'cooler': world.cooler(); sfx('glug'); return;
     case 'lamp': case 'lamp-r': world.toggleLamp(id); sfx('click'); return;
     case 'easel': case 'bin': case 'tableLow': case 'sofa': world.wiggle(id, 0, 0); sfx('tick'); return;

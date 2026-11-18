@@ -11,7 +11,7 @@ export const H = ROWS * T;
 
 export type FurnKind =
   | 'desk' | 'chefDesk' | 'chair' | 'chefChair' | 'plantBig' | 'plantTall' | 'plantSmall' | 'rack' | 'printer'
-  | 'cooler' | 'coffee' | 'sofa' | 'tableLow' | 'shelf' | 'lamp' | 'easel' | 'bin' | 'jukebox';
+  | 'cooler' | 'coffee' | 'sofa' | 'tableLow' | 'shelf' | 'lamp' | 'easel' | 'bin' | 'jukebox' | 'popcorn';
 
 export interface Furn {
   id: string;
@@ -88,6 +88,7 @@ furn.push({ id: 'sofa', kind: 'sofa', tx: 2, ty: 14, w: 3, h: 1 });
 furn.push({ id: 'tableLow', kind: 'tableLow', tx: 2, ty: 13, w: 2, h: 0 });
 furn.push({ id: 'lamp', kind: 'lamp', tx: 1, ty: 14, w: 1, h: 1 });
 furn.push({ id: 'shelf', kind: 'shelf', tx: 5, ty: 14, w: 2, h: 1 });
+furn.push({ id: 'popcorn', kind: 'popcorn', tx: 7, ty: 14, w: 1, h: 1 });
 furn.push({ id: 'coffee', kind: 'coffee', tx: 16, ty: 14, w: 3, h: 1 });
 furn.push({ id: 'jukebox', kind: 'jukebox', tx: 14, ty: 14, w: 2, h: 1 });
 furn.push({ id: 'plant-coffee', kind: 'plantBig', tx: 19, ty: 14, w: 1, h: 1, seed: 21 });
